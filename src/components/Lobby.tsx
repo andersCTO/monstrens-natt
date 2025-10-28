@@ -1,0 +1,78 @@
+'use client';
+
+import { useGameStore } from '@/store/gameStore';
+
+export default function Lobby() {
+  const { gameCode, players, isHost, startGame } = useGameStore();
+
+  const canStart = players.length >= 3; // Minimum 3 players
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full">
+        {/* Game Code Display */}
+        <div className="text-center mb-8">
+          <h2 className="text-2xl text-purple-200 mb-4">Spelkod</h2>
+          <div className="bg-white/20 backdrop-blur-md rounded-lg p-6 inline-block">
+            <p className="text-6xl font-bold text-white tracking-widest font-mono">
+              {gameCode}
+            </p>
+          </div>
+          <p className="text-purple-200 mt-4">
+            Dela denna kod med andra spelare
+          </p>
+        </div>
+
+        {/* Players List */}
+        <div className="bg-white/10 backdrop-blur-md rounded-lg p-8 mb-8">
+          <h3 className="text-2xl font-bold text-white mb-6">
+            Spelare ({players.length})
+          </h3>
+          <div className="space-y-3">
+            {players.map((player) => (
+              <div
+                key={player.id}
+                className="bg-white/10 rounded-lg p-4 flex items-center justify-between"
+              >
+                <span className="text-white text-lg">{player.name}</span>
+                {player.isHost && (
+                  <span className="bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-bold">
+                    👑 Värd
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Start Button (Host only) */}
+        {isHost && (
+          <div className="text-center">
+            <button
+              onClick={startGame}
+              disabled={!canStart}
+              className={`w-full font-bold py-6 px-8 rounded-lg text-xl transition-all transform shadow-lg ${
+                canStart
+                  ? 'bg-green-600 hover:bg-green-700 hover:scale-105 text-white'
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {canStart
+                ? '🎭 Starta spelet'
+                : `Väntar på fler spelare (minst 3)`}
+            </button>
+            <p className="text-purple-200 mt-4 text-sm">
+              Rekommenderat: 8–30 spelare för bästa upplevelse
+            </p>
+          </div>
+        )}
+
+        {!isHost && (
+          <div className="text-center text-purple-200">
+            <p className="text-lg">Väntar på att värden startar spelet...</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
