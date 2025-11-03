@@ -18,8 +18,8 @@ export default function GuessingPhase() {
   const [error, setError] = useState('');
 
   const factions = getAllFactions();
-  // In guessing phase, you should be able to guess on ALL players including yourself
-  const availablePlayers = players;
+  // Exclude yourself from the available players to guess on
+  const availablePlayers = players.filter(p => p.id !== playerId);
 
   const handleGuessChange = (faction: Faction, index: number, value: string) => {
     setGuesses(prev => ({
@@ -65,6 +65,20 @@ export default function GuessingPhase() {
           <p className="text-sm text-purple-300 mt-2">
             Du kan välja 0-2 spelare per fraktion
           </p>
+          
+          <div className="mt-6 bg-white/10 backdrop-blur-md rounded-lg p-6 max-w-2xl mx-auto">
+            <h2 className="text-lg font-bold text-white mb-3">📊 Poängsättning</h2>
+            <div className="space-y-2 text-left">
+              <div className="flex items-center text-green-300">
+                <span className="text-2xl mr-3">+1</span>
+                <span>Komplett korrekt rad (båda spelare rätt i en fraktion)</span>
+              </div>
+              <div className="flex items-center text-red-300">
+                <span className="text-2xl mr-3">-1</span>
+                <span>Per felplacerad spelare från din egen fraktion</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {!submitted ? (
@@ -112,12 +126,22 @@ export default function GuessingPhase() {
             )}
 
             <div className="space-y-4">
-              <button
-                onClick={validateAndSubmit}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-6 px-8 rounded-lg text-xl transition-all transform hover:scale-105 shadow-lg"
-              >
-                ✅ Lämna in gissningar
-              </button>
+              <div className="flex gap-4">
+                <button
+                  onClick={validateAndSubmit}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-6 px-8 rounded-lg text-xl transition-all transform hover:scale-105 shadow-lg"
+                >
+                  ✅ Lämna in gissningar
+                </button>
+                {isHost && (
+                  <button
+                    onClick={endGuessing}
+                    className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-6 px-8 rounded-lg text-xl transition-all transform hover:scale-105 shadow-lg"
+                  >
+                    🏁 Avsluta direkt
+                  </button>
+                )}
+              </div>
               <button
                 onClick={leaveGame}
                 className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all"

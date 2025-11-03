@@ -37,6 +37,7 @@ app.prepare().then(() => {
     socket.on('get-active-games', () => {
       const activeGames = Array.from(games.values()).map(game => ({
         code: game.code,
+        name: game.name || 'Monstrens Natt',
         playerCount: game.players.size,
         phase: game.phase,
         hostName: Array.from(game.players.values()).find(p => p.isHost)?.name || 'Okänd'
@@ -54,12 +55,14 @@ app.prepare().then(() => {
       }
     });
 
-    socket.on('create-game', (playerName, callback) => {
+    socket.on('create-game', (data, callback) => {
+      const { playerName, gameName } = data;
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const playerId = socket.id;
       
       const game = {
         code,
+        name: gameName || 'Monstrens Natt',
         hostId: playerId,
         players: new Map([[playerId, { 
           id: playerId, 
@@ -72,7 +75,7 @@ app.prepare().then(() => {
         submissions: []
       };      games.set(code, game);
       socket.join(code);
-      console.log(`Game created: ${code} by ${playerName}`);
+      console.log(`Game created: ${code} "${gameName}" by ${playerName}`);
       
       callback({ code, playerId });
       
@@ -137,21 +140,39 @@ app.prepare().then(() => {
         
       } else {
         // New player joining
-        if (game.phase !== 'lobby') {
-          callback({ success: false, error: 'Spelet har redan startat' });
+        if (game.phase !== 'lobby' && game.phase !== 'guessing') {
+          callback({ success: false, error: 'Spelet kan inte jointas just nu' });
           return;
         }
 
         const playerId = socket.id;
-        game.players.set(playerId, { 
+        const newPlayer = { 
           id: playerId, 
           name: playerName, 
           isHost: false,
           disconnected: false
-        });
+        };
+        
+        // If joining during guessing phase, assign a random faction
+        if (game.phase === 'guessing') {
+          const factions = ['Vampyr', 'Varulv', 'Häxa', 'Monsterjägare', 'De Fördömda'];
+          newPlayer.faction = factions[Math.floor(Math.random() * factions.length)];
+        }
+        
+        game.players.set(playerId, newPlayer);
         socket.join(code);
         console.log(`${playerName} joined game ${code}`);
         callback({ success: true, playerId });
+        
+        // If joined during guessing phase, send role immediately
+        if (game.phase === 'guessing' && newPlayer.faction) {
+          socket.emit('role-assigned', { faction: newPlayer.faction });
+          socket.emit('phase-changed', {
+            phase: game.phase,
+            mingelDuration: game.mingelDuration,
+            startTime: game.startTime
+          });
+        }
       }
       
       // Broadcast updated game list
@@ -269,7 +290,7 @@ app.prepare().then(() => {
         players: players.map(p => ({ id: p.id, name: p.name, faction: p.faction }))
       });
 
-      // Delete game after 5 minutes to clean up
+      // Delete game immediately after showing results
       setTimeout(() => {
         const stillExists = games.get(code);
         if (stillExists && stillExists.phase === 'results') {
@@ -277,7 +298,7 @@ app.prepare().then(() => {
           console.log(`Game ${code} deleted after completion`);
           broadcastActiveGames();
         }
-      }, 5 * 60 * 1000); // 5 minutes
+      }, 30 * 1000); // 30 seconds to view results
     });
 
     socket.on('disconnect', () => {
@@ -321,6 +342,7 @@ app.prepare().then(() => {
   function broadcastActiveGames() {
     const activeGames = Array.from(games.values()).map(game => ({
       code: game.code,
+      name: game.name || 'Monstrens Natt',
       playerCount: game.players.size,
       phase: game.phase,
       hostName: Array.from(game.players.values()).find(p => p.isHost)?.name || 'Okänd'

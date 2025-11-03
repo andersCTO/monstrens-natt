@@ -5,6 +5,7 @@ import { Player, GamePhase, Faction, GameScore } from '@/types/game';
 
 interface ActiveGame {
   code: string;
+  name: string;
   playerCount: number;
   phase: GamePhase;
   hostName: string;
@@ -29,7 +30,7 @@ interface GameState {
   activeGames: ActiveGame[];
   
   connectSocket: () => void;
-  createGame: (playerName: string) => Promise<void>;
+  createGame: (playerName: string, gameName: string) => Promise<void>;
   joinGame: (code: string, playerName: string) => Promise<{ success: boolean; error?: string }>;
   startGame: () => void;
   endMingel: () => void;
@@ -154,12 +155,12 @@ export const useGameStore = create<GameState>()(
         set({ socket });
       },
 
-      createGame: async (playerName: string) => {
+      createGame: async (playerName: string, gameName: string) => {
         const socket = get().socket;
         if (!socket) return;
 
         return new Promise<void>((resolve) => {
-          socket.emit('create-game', playerName, (data: { code: string; playerId: string }) => {
+          socket.emit('create-game', { playerName, gameName }, (data: { code: string; playerId: string }) => {
             set({ 
               gameCode: data.code,
               playerId: data.playerId,
