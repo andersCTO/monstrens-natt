@@ -97,10 +97,10 @@ app.prepare().then(() => {
         return;
       }
 
-      // Check if this player is reconnecting
+      // Check if this player is reconnecting (either disconnected or just refreshed)
       let existingPlayer = null;
       for (const [id, player] of game.players.entries()) {
-        if (player.name === playerName && player.disconnected) {
+        if (player.name === playerName) {
           existingPlayer = { oldId: id, player };
           break;
         }
@@ -134,13 +134,13 @@ app.prepare().then(() => {
           socket.emit('phase-changed', {
             phase: game.phase,
             mingelDuration: game.mingelDuration,
-            startTime: game.startTime
+            startTime: game.mingelStartTime
           });
         }
         
       } else {
         // New player joining
-        if (game.phase !== 'lobby' && game.phase !== 'guessing') {
+        if (game.phase !== 'lobby' && game.phase !== 'mingel') {
           callback({ success: false, error: 'Spelet kan inte jointas just nu' });
           return;
         }
@@ -153,8 +153,8 @@ app.prepare().then(() => {
           disconnected: false
         };
         
-        // If joining during guessing phase, assign a random faction
-        if (game.phase === 'guessing') {
+        // If joining during mingel phase, assign a random faction
+        if (game.phase === 'mingel') {
           const factions = ['Vampyr', 'Varulv', 'Häxa', 'Monsterjägare', 'De Fördömda'];
           newPlayer.faction = factions[Math.floor(Math.random() * factions.length)];
         }
@@ -164,13 +164,13 @@ app.prepare().then(() => {
         console.log(`${playerName} joined game ${code}`);
         callback({ success: true, playerId });
         
-        // If joined during guessing phase, send role immediately
-        if (game.phase === 'guessing' && newPlayer.faction) {
+        // If joined during mingel phase, send role and phase immediately
+        if (game.phase === 'mingel' && newPlayer.faction) {
           socket.emit('role-assigned', { faction: newPlayer.faction });
           socket.emit('phase-changed', {
             phase: game.phase,
             mingelDuration: game.mingelDuration,
-            startTime: game.startTime
+            startTime: game.mingelStartTime
           });
         }
       }
