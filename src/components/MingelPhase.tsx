@@ -35,7 +35,7 @@ export default function MingelPhase() {
             {/* Telling Tales */}
             <div>
               <h3 className="text-2xl font-bold text-white mb-3">
-                📖 Telling Tales
+                🎭 Rörelsevana
               </h3>
               <ul className="space-y-2">
                 {factionData.tellingTales.map((tale, index) => (

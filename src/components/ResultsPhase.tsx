@@ -1,14 +1,58 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { getFactionByName } from '@/lib/factions';
 
 export default function ResultsPhase() {
   const { scores, revealedPlayers, reset } = useGameStore();
+  const [countdown, setCountdown] = useState(10);
+  const [showResults, setShowResults] = useState(false);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowResults(true);
+    }
+  }, [countdown]);
 
   const getPlayerFaction = (playerId: string) => {
     return revealedPlayers.find(p => p.id === playerId);
   };
+
+  if (!showResults) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="relative">
+            <div className="text-9xl font-bold text-white mb-8 animate-pulse">
+              {countdown}
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-64 h-64 border-8 border-purple-500 rounded-full animate-ping opacity-20"></div>
+            </div>
+          </div>
+          <h2 className="text-4xl font-bold text-white mb-4">
+            🔮 Beräknar resultat...
+          </h2>
+          <p className="text-xl text-purple-200">
+            Identiteterna avslöjas snart!
+          </p>
+          <div className="mt-8 flex justify-center space-x-2">
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className="w-4 h-4 bg-purple-500 rounded-full animate-bounce"
+                style={{ animationDelay: `${i * 0.1}s` }}
+              ></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 py-12">

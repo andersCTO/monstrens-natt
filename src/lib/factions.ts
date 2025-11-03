@@ -7,9 +7,9 @@ export const FACTIONS: Record<Faction, FactionData> = {
     description: 'Odödliga varelser som smyger i nattens skuggor och suger livsenergi ur sina offer.',
     color: 'bg-red-600',
     tellingTales: [
-      'Du känner dig alltid piggare på kvällen än på morgonen',
-      'Du har en mystisk motvilja mot vitlök',
-      'Du föredrar ditt kött rött, mycket rött'
+      'Försöker smyga när du går',
+      'Rör på huvudet som om du spanar efter något i mörkret',
+      'Gör subtila bitande rörelser mot luften'
     ],
     forbiddenWords: [
       'Blod',
@@ -30,9 +30,9 @@ export const FACTIONS: Record<Faction, FactionData> = {
     description: 'Människor med en vild och farlig förbannelse – vid fullmåne förvandlas de till vargliknande monster.',
     color: 'bg-amber-700',
     tellingTales: [
-      'Du blir ovanligt uppjagad vid fullmåne',
-      'Du har märkligt mycket kroppsbehåring',
-      'Du föredrar att äta med händerna'
+      'Krafsar dig bakom örat som en hund',
+      'Gör snabba, ryckiga huvudrörelser',
+      'Kliar dig ofta och aggressivt'
     ],
     forbiddenWords: [
       'Måne',
@@ -52,9 +52,9 @@ export const FACTIONS: Record<Faction, FactionData> = {
     description: 'Mäktiga utövare av mörk magi, experter på brygder, besvärjelser och förbannelser.',
     color: 'bg-purple-600',
     tellingTales: [
-      'Du samlar på ovanliga örter och "ingredienser"',
-      'Du pratar ibland med ditt husdjur som om det förstår',
-      'Du har en speciell förmåga att "känna" saker innan de händer'
+      'Gör cirklar med fingret i luften som om du blandar något',
+      'Gör vaga svepande rörelser med händerna',
+      'Gestikulerar mystiskt när du pratar'
     ],
     forbiddenWords: [
       'Trolldryck',
@@ -75,9 +75,9 @@ export const FACTIONS: Record<Faction, FactionData> = {
     description: 'Modiga krigare dedikerade till att skydda mänskligheten från övernaturliga hot.',
     color: 'bg-blue-600',
     tellingTales: [
-      'Du har alltid en kniv eller verktyg på dig "för säkerhets skull"',
-      'Du är misstänksam mot nya människor tills de bevisat sig pålitliga',
-      'Du känner dig tryggare med ryggen mot väggen'
+      'Står ofta med armarna i kors och blicken runt rummet',
+      'Gör snabba defensiva rörelser med händerna',
+      'Håller dig stadigt och balanserat som om du alltid är redo'
     ],
     forbiddenWords: [
       'Vapen',
@@ -98,9 +98,9 @@ export const FACTIONS: Record<Faction, FactionData> = {
     description: 'Dömda själar som varken tillhör de levande eller de döda – rastlösa andar med oavslutade angelägenheter.',
     color: 'bg-gray-700',
     tellingTales: [
-      'Du känner dig ibland "frånkopplad" från världen omkring dig',
-      'Du har svårt att komma ihåg vissa perioder av ditt liv',
-      'Folk säger ibland att du "ser rakt igenom dem"'
+      'Rör dig långsamt och glidande som om du svävar',
+      'Tittar frånvarande förbi folk som om de inte finns',
+      'Gör tomma, meningslösa gester i luften'
     ],
     forbiddenWords: [
       'Död',

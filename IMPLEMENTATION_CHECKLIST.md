@@ -130,7 +130,7 @@
 ### För att Testa:
 ```powershell
 # Navigera till projektet
-Set-Location "c:\Users\AndersKul\OneDrive - HiQ\Dokument\Monstrens Natt\monstrens-natt-app"
+cd monstrens-natt-app
 
 # Starta servern
 node server.js

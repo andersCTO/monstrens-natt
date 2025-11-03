@@ -1,6 +1,6 @@
 # 🌙 Monstrens Natt
 
-Ett socialt gissningsspel i realtid för 8–30 deltagare, där varje spelare får en hemlig roll tillhörande en fraktion.
+Ett socialt gissningsspel i realtid för 6–30 deltagare, där varje spelare får en hemlig roll tillhörande en fraktion.
 
 ## 🎯 Spelöversikt
 
@@ -13,15 +13,37 @@ Varje spelare tilldelas slumpmässigt en av fem fraktioner:
 
 ## 🕹️ Spelflöde
 
-1. **Skapa/Gå med i spel** - En spelare skapar ett spel och får en 6-siffrig kod
-2. **Lobby** - Spelare ansluter med koden, värd startar när alla är redo
-3. **Rolltilldelning** - Varje spelare får sin hemliga fraktion
-4. **Mingelfas** (45 min) - Spelare minglar och försöker lista ut andras fraktioner genom:
-   - Telling Tales (ledtrådar)
-   - Förbjudna ord (måste undvikas)
-   - Favoritfraser (kan användas subtilt)
-5. **Gissningsfas** - Välj 2 spelare för varje fraktion
-6. **Resultat** - Poäng räknas och vinnaren koras!
+1. **Skapa/Gå med i spel**
+   - En spelare skapar ett spel med namn på session (t.ex. "Fredagsmingel")
+   - Får en 6-siffrig kod som delas med andra
+   - Aktiva spel visas automatiskt på startsidan
+   
+2. **Lobby**
+   - Spelare kan ansluta under lobby- och mingelfas
+   - Ange förnamn och efternamn (ditt riktiga namn för att veta vem som är vem)
+   - Värd startar när tillräckligt många är redo
+   
+3. **Rolltilldelning**
+   - Varje spelare får sin hemliga fraktion
+   - Jämn fördelning mellan fraktioner baserat på antal spelare
+   
+4. **Mingelfas** (ingen tidsgräns)
+   - Spelare minglar och försöker lista ut andras fraktioner genom:
+     - **Rörelsevana** - Motoriska rörelser som avslöjar din fraktion
+     - **Förbjudna ord** - Måste undvikas
+     - **Favoritfraser** - Kan användas subtilt
+   - Värden avslutar mingeln när det är dags
+   - Nya spelare kan fortfarande gå med under mingelfasen
+   
+5. **Gissningsfas**
+   - Välj 0-2 spelare för varje fraktion (valfritt)
+   - Du kan inte välja dig själv
+   - Värden kan avsluta direkt utan att vänta på alla svar
+   
+6. **Resultat**
+   - 10 sekunders spännande countdown-animation
+   - Poäng räknas och vinnaren koras
+   - Spel tas automatiskt bort efter 30 sekunder
 
 ## 🏆 Poängräkning
 
@@ -53,26 +75,31 @@ http://localhost:3000
 
 ### För Värd
 1. Klicka "Skapa nytt spel"
-2. Ange ditt namn
-3. Dela spelkoden med andra spelare
-4. Starta spelet när alla har anslutit
+2. Ange namn på spelsession (t.ex. "Fredagsmingel")
+3. Ange ditt förnamn och efternamn
+4. Dela spelkoden med andra spelare
+5. Starta spelet när tillräckligt många har anslutit
+6. Avsluta mingelfasen när det känns rätt
+7. Kan avsluta gissningsfasen direkt utan att vänta på alla
 
 ### För Spelare
 1. Se listan över aktiva spel på startsidan
-2. Klicka "Gå med" på ett aktivt spel eller "Gå med i spel" för att ange kod manuellt
-3. Ange ditt namn (och spelkod om du valde manuell inmatning)
-4. Vänta på att värden startar
-5. Se din hemliga roll och mingla!
-6. Använd "Lämna spel"-knappen om du behöver avbryta
+2. Klicka på ett aktivt spelnamn eller "Gå med i spel" för att ange kod manuellt
+3. Ange ditt förnamn och efternamn (ditt riktiga namn)
+4. Kan gå med under lobby- och mingelfas
+5. Vänta på att värden startar
+6. Se din hemliga roll och mingla!
+7. I gissningsfasen: Välj 0-2 spelare per fraktion (du kan inte välja dig själv)
+8. Använd "Lämna spel"-knappen om du behöver avbryta
 
 ## 🎮 Spelregler
 
 **VIKTIG REGEL**: Du får INTE avslöja din roll direkt!
 
 Använd:
-- ✅ Telling Tales - Subtila ledtrådar om din fraktion
-- ✅ Favoritfraser - Karaktäristiska uttryck
-- ❌ Förbjudna ord - Undvik dessa ord!
+- ✅ **Rörelsevana** - Motoriska rörelser som avslöjar din fraktion subtilt
+- ✅ **Favoritfraser** - Karaktäristiska uttryck
+- ❌ **Förbjudna ord** - Undvik dessa ord!
 
 ## 📦 Projektstruktur
 
@@ -100,17 +127,24 @@ monstrens-natt-app/
 
 - ✅ Realtids multiplayer med Socket.IO
 - ✅ Responsiv design för mobil och desktop
-- ✅ Automatisk rolltilldelning
+- ✅ Automatisk rolltilldelning med jämn fördelning
 - ✅ Manuell kontroll av mingelfas (värden avslutar)
-- ✅ Validering av gissningar
+- ✅ Flexibla gissningar (0-2 spelare per fraktion)
+- ✅ Kan inte välja sig själv i gissningar
 - ✅ Automatisk poängräkning
+- ✅ Spännande 10-sekunders countdown före resultat
 - ✅ Vacker gradient UI med Tailwind CSS
 - ✅ Full svensk språkstöd
-- ✅ **Visa aktiva spel på startsidan**
+- ✅ **Visa aktiva spel på startsidan med spelnamn**
 - ✅ **Lämna spel och återgå till lobby**
 - ✅ **Lokal lagring för att överleva serveravbrott**
+- ✅ **Reconnection-stöd baserat på namn**
+- ✅ **Join under lobby- och mingelfas**
 - ✅ **Anslutningsstatus-indikator**
 - ✅ **Automatisk värdöverföring vid frånkoppling**
+- ✅ **Förnamn och efternamn för tydligare identifiering**
+- ✅ **Rörelsevana istället för Telling Tales**
+- ✅ **Spel tas automatiskt bort 30 sekunder efter avslut**
 
 ## 📚 Dokumentation
 
