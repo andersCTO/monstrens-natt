@@ -3,9 +3,9 @@
 import { useGameStore } from '@/store/gameStore';
 
 export default function Lobby() {
-  const { gameCode, players, isHost, startGame } = useGameStore();
+  const { gameCode, players, isHost, startGame, leaveGame } = useGameStore();
 
-  const canStart = players.length >= 3; // Minimum 3 players
+  const canStart = players.length >= 2; // Minimum 2 players
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -43,11 +43,9 @@ export default function Lobby() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Start Button (Host only) */}
+        </div>        {/* Start Button (Host only) */}
         {isHost && (
-          <div className="text-center">
+          <div className="text-center space-y-4">
             <button
               onClick={startGame}
               disabled={!canStart}
@@ -59,17 +57,29 @@ export default function Lobby() {
             >
               {canStart
                 ? '🎭 Starta spelet'
-                : `Väntar på fler spelare (minst 3)`}
+                : `Väntar på fler spelare (minst 2)`}
             </button>
-            <p className="text-purple-200 mt-4 text-sm">
+            <p className="text-purple-200 text-sm">
               Rekommenderat: 8–30 spelare för bästa upplevelse
             </p>
+            <button
+              onClick={leaveGame}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all"
+            >
+              Lämna spel
+            </button>
           </div>
         )}
 
         {!isHost && (
-          <div className="text-center text-purple-200">
-            <p className="text-lg">Väntar på att värden startar spelet...</p>
+          <div className="text-center space-y-4">
+            <p className="text-lg text-purple-200">Väntar på att värden startar spelet...</p>
+            <button
+              onClick={leaveGame}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all"
+            >
+              Lämna spel
+            </button>
           </div>
         )}
       </div>

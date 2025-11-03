@@ -4,7 +4,7 @@ const next = require('next');
 const { Server } = require('socket.io');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+const hostname = '0.0.0.0'; // Listen on all network interfaces
 const port = 3000;
 
 const app = next({ dev, hostname, port });
@@ -30,10 +30,29 @@ app.prepare().then(() => {
   });
 
   // Import and initialize socket handlers
-  const games = new Map();
-
-  io.on('connection', (socket) => {
+  const games = new Map();  io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
+
+    // Get list of active games
+    socket.on('get-active-games', () => {
+      const activeGames = Array.from(games.values()).map(game => ({
+        code: game.code,
+        playerCount: game.players.size,
+        phase: game.phase,
+        hostName: Array.from(game.players.values()).find(p => p.isHost)?.name || 'Okänd'
+      }));
+      socket.emit('games-updated', activeGames);
+    });
+
+    // Validate existing game connection on reconnect
+    socket.on('validate-game', (gameCode, callback) => {
+      const game = games.get(gameCode);
+      if (!game) {
+        callback({ valid: false, reason: 'Spelet finns inte längre' });
+      } else {
+        callback({ valid: true });
+      }
+    });
 
     socket.on('create-game', (playerName, callback) => {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -42,17 +61,24 @@ app.prepare().then(() => {
       const game = {
         code,
         hostId: playerId,
-        players: new Map([[playerId, { id: playerId, name: playerName, isHost: true }]]),
+        players: new Map([[playerId, { 
+          id: playerId, 
+          name: playerName, 
+          isHost: true,
+          disconnected: false
+        }]]),
         phase: 'lobby',
         mingelDuration: 45,
         submissions: []
-      };
-
-      games.set(code, game);
+      };      games.set(code, game);
       socket.join(code);
       console.log(`Game created: ${code} by ${playerName}`);
       
       callback({ code, playerId });
+      
+      // Broadcast updated game list to all clients
+      broadcastActiveGames();
+      
       io.to(code).emit('lobby-update', {
         players: Array.from(game.players.values()),
         hostId: game.hostId
@@ -68,21 +94,107 @@ app.prepare().then(() => {
         return;
       }
 
-      if (game.phase !== 'lobby') {
-        callback({ success: false, error: 'Spelet har redan startat' });
-        return;
+      // Check if this player is reconnecting
+      let existingPlayer = null;
+      for (const [id, player] of game.players.entries()) {
+        if (player.name === playerName && player.disconnected) {
+          existingPlayer = { oldId: id, player };
+          break;
+        }
       }
 
-      const playerId = socket.id;
-      game.players.set(playerId, { id: playerId, name: playerName, isHost: false });
-      socket.join(code);
+      if (existingPlayer) {
+        // Reconnecting player
+        const { oldId, player } = existingPlayer;
+        game.players.delete(oldId);
+        
+        const playerId = socket.id;
+        player.id = playerId;
+        player.disconnected = false;
+        game.players.set(playerId, player);
+        
+        // If they were the host, restore host status
+        if (game.hostId === oldId) {
+          game.hostId = playerId;
+        }
+        
+        socket.join(code);
+        console.log(`${playerName} reconnected to game ${code}`);
+        
+        callback({ success: true, playerId });
+        
+        // Send them their current game state
+        if (player.faction) {
+          socket.emit('role-assigned', { faction: player.faction });
+        }
+        if (game.phase !== 'lobby') {
+          socket.emit('phase-changed', {
+            phase: game.phase,
+            mingelDuration: game.mingelDuration,
+            startTime: game.startTime
+          });
+        }
+        
+      } else {
+        // New player joining
+        if (game.phase !== 'lobby') {
+          callback({ success: false, error: 'Spelet har redan startat' });
+          return;
+        }
 
-      console.log(`${playerName} joined game ${code}`);
-      callback({ success: true, playerId });
+        const playerId = socket.id;
+        game.players.set(playerId, { 
+          id: playerId, 
+          name: playerName, 
+          isHost: false,
+          disconnected: false
+        });
+        socket.join(code);
+        console.log(`${playerName} joined game ${code}`);
+        callback({ success: true, playerId });
+      }
+      
+      // Broadcast updated game list
+      broadcastActiveGames();
+      
       io.to(code).emit('lobby-update', {
         players: Array.from(game.players.values()),
         hostId: game.hostId
       });
+    });
+
+    socket.on('leave-game', (code) => {
+      const game = games.get(code);
+      if (!game) return;
+
+      game.players.delete(socket.id);
+      socket.leave(code);
+
+      if (game.players.size === 0) {
+        // No players left, delete the game
+        games.delete(code);
+        console.log(`Game ${code} deleted - no players left`);
+      } else if (game.hostId === socket.id) {
+        // Host left, assign new host
+        const newHost = Array.from(game.players.values())[0];
+        game.hostId = newHost.id;
+        newHost.isHost = true;
+        console.log(`New host assigned in game ${code}: ${newHost.name}`);
+        
+        io.to(code).emit('lobby-update', {
+          players: Array.from(game.players.values()),
+          hostId: game.hostId
+        });
+      } else {
+        // Regular player left
+        io.to(code).emit('lobby-update', {
+          players: Array.from(game.players.values()),
+          hostId: game.hostId
+        });
+      }
+      
+      // Broadcast updated game list
+      broadcastActiveGames();
     });
 
     socket.on('start-game', (code) => {
@@ -146,29 +258,52 @@ app.prepare().then(() => {
     });
 
     socket.on('disconnect', () => {
+      console.log('Client disconnected:', socket.id);
+      
       games.forEach((game, code) => {
         if (game.players.has(socket.id)) {
-          game.players.delete(socket.id);
+          const disconnectedPlayer = game.players.get(socket.id);
+          console.log(`Player ${disconnectedPlayer.name} disconnected from game ${code}`);
+          
+          // Mark player as disconnected but keep them in the game
+          disconnectedPlayer.disconnected = true;
 
+          // If the host disconnected, transfer host to another connected player
           if (game.hostId === socket.id) {
-            if (game.players.size > 0) {
-              const newHost = Array.from(game.players.values())[0];
+            const connectedPlayers = Array.from(game.players.values()).filter(p => !p.disconnected);
+            if (connectedPlayers.length > 0) {
+              const newHost = connectedPlayers[0];
               game.hostId = newHost.id;
               newHost.isHost = true;
+              console.log(`Host transferred to ${newHost.name}`);
             } else {
-              games.delete(code);
-              return;
+              // All players disconnected, but keep the game alive for reconnection
+              console.log(`All players disconnected from game ${code}, keeping game alive`);
             }
           }
 
+          // Notify other players
           io.to(code).emit('lobby-update', {
             players: Array.from(game.players.values()),
             hostId: game.hostId
           });
+
+          // Broadcast updated games list
+          broadcastActiveGames();
         }
       });
     });
   });
+
+  function broadcastActiveGames() {
+    const activeGames = Array.from(games.values()).map(game => ({
+      code: game.code,
+      playerCount: game.players.size,
+      phase: game.phase,
+      hostName: Array.from(game.players.values()).find(p => p.isHost)?.name || 'Okänd'
+    }));
+    io.emit('games-updated', activeGames);
+  }
 
   function assignFactions(players) {
     const assignments = new Map();
@@ -239,13 +374,14 @@ app.prepare().then(() => {
     
     return scores.sort((a, b) => b.score - a.score);
   }
-
   httpServer
     .once('error', (err) => {
       console.error(err);
       process.exit(1);
     })
-    .listen(port, () => {
-      console.log(`> Ready on http://${hostname}:${port}`);
+    .listen(port, '0.0.0.0', () => {
+      console.log(`> Ready on http://0.0.0.0:${port}`);
+      console.log(`> Local:   http://localhost:${port}`);
+      console.log(`> Network: Use your IP address with port ${port}`);
     });
 });

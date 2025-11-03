@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 
 export default function StartScreen() {
@@ -10,7 +10,11 @@ export default function StartScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { createGame, joinGame } = useGameStore();
+  const { createGame, joinGame, activeGames, getActiveGames } = useGameStore();
+
+  useEffect(() => {
+    getActiveGames();
+  }, [getActiveGames]);
 
   const handleCreateGame = async () => {
     if (!name.trim()) {
@@ -58,9 +62,7 @@ export default function StartScreen() {
           <p className="text-xl text-purple-200">
             Ett socialt gissningsspel om hemliga identiteter
           </p>
-        </div>
-
-        {/* Menu */}
+        </div>        {/* Menu */}
         {mode === 'menu' && (
           <div className="space-y-4">
             <button
@@ -121,6 +123,39 @@ export default function StartScreen() {
         {mode === 'join' && (
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-8 space-y-6">
             <h2 className="text-3xl font-bold text-white mb-6">Gå med i spel</h2>
+            
+            {/* Active Games List */}
+            {activeGames && activeGames.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-white mb-4">Välj ett aktivt spel ({activeGames.length})</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {activeGames.map((game) => (
+                    <button
+                      key={game.code}
+                      onClick={() => setCode(game.code)}
+                      className={`w-full text-left bg-white/10 rounded-lg p-4 hover:bg-white/20 transition-all ${
+                        code === game.code ? 'ring-2 ring-purple-400 bg-white/20' : ''
+                      }`}
+                    >
+                      <div className="text-white font-mono text-xl font-bold">{game.code}</div>
+                      <div className="text-purple-200 text-sm">
+                        Värd: {game.hostName} • {game.playerCount} spelare • {game.phase === 'lobby' ? 'Lobby' : game.phase === 'mingel' ? 'Mingel' : game.phase === 'guessing' ? 'Gissning' : 'Resultat'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4 text-center text-purple-200 text-sm">
+                  eller ange spelkod manuellt nedan
+                </div>
+              </div>
+            )}
+
+            {activeGames && activeGames.length === 0 && (
+              <div className="mb-6 text-center text-purple-200">
+                <p>Inga aktiva spel just nu. Ange spelkod manuellt nedan.</p>
+              </div>
+            )}
+
             <div>
               <label className="block text-purple-200 mb-2">Ditt namn</label>
               <input
@@ -150,6 +185,7 @@ export default function StartScreen() {
                 onClick={() => {
                   setMode('menu');
                   setError('');
+                  setCode('');
                 }}
                 className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg"
                 disabled={loading}

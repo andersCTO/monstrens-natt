@@ -47,12 +47,11 @@ export default function ResultsPhase() {
                       {index > 2 && `${index + 1}.`}
                     </div>
                     <div>
-                      <div className="flex items-center space-x-3">
-                        <p className="text-2xl font-bold text-white">
+                      <div className="flex items-center space-x-3">                        <p className="text-2xl font-bold text-white">
                           {score.playerName}
                         </p>
                         {factionData && (
-                          <span className={`${factionData.color} px-3 py-1 rounded-full text-white text-sm`}>
+                          <span className="bg-indigo-700 px-3 py-1 rounded-full text-white text-sm">
                             {factionData.symbol} {factionData.name}
                           </span>
                         )}
@@ -81,11 +80,10 @@ export default function ResultsPhase() {
               const factionPlayers = revealedPlayers.filter(p => p.faction === faction);
               
               if (factionPlayers.length === 0) return null;
-              
-              return (
+                return (
                 <div
                   key={faction}
-                  className={`${factionData.color} rounded-lg p-4`}
+                  className="bg-indigo-800 rounded-lg p-4"
                 >
                   <div className="flex items-center mb-3">
                     <span className="text-3xl mr-2">{factionData.symbol}</span>

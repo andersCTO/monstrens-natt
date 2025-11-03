@@ -6,7 +6,7 @@ import { getAllFactions } from '@/lib/factions';
 import { Faction, GameGuess } from '@/types/game';
 
 export default function GuessingPhase() {
-  const { players, playerId, submitGuesses, isHost, endGuessing, submissions } = useGameStore();
+  const { players, playerId, submitGuesses, isHost, endGuessing, submissions, leaveGame } = useGameStore();
   const [guesses, setGuesses] = useState<Record<Faction, string[]>>({
     'Vampyr': ['', ''],
     'Varulv': ['', ''],
@@ -18,7 +18,8 @@ export default function GuessingPhase() {
   const [error, setError] = useState('');
 
   const factions = getAllFactions();
-  const otherPlayers = players.filter(p => p.id !== playerId);
+  // In guessing phase, you should be able to guess on ALL players including yourself
+  const availablePlayers = players;
 
   const handleGuessChange = (faction: Faction, index: number, value: string) => {
     setGuesses(prev => ({
@@ -72,11 +73,10 @@ export default function GuessingPhase() {
         </div>
 
         {!submitted ? (
-          <div className="space-y-6">
-            {factions.map((factionData) => (
+          <div className="space-y-6">            {factions.map((factionData) => (
               <div
                 key={factionData.name}
-                className={`${factionData.color} rounded-lg p-6`}
+                className="bg-indigo-800 rounded-lg p-6"
               >
                 <div className="flex items-center mb-4">
                   <span className="text-4xl mr-3">{factionData.symbol}</span>
@@ -96,7 +96,7 @@ export default function GuessingPhase() {
                       <option value="" className="text-black">
                         Välj spelare {index + 1}
                       </option>
-                      {otherPlayers.map((player) => (
+                      {availablePlayers.map((player) => (
                         <option
                           key={player.id}
                           value={player.id}
@@ -110,20 +110,26 @@ export default function GuessingPhase() {
                   ))}
                 </div>
               </div>
-            ))}
-
-            {error && (
+            ))}            {error && (
               <div className="bg-red-500/20 border-2 border-red-400 rounded-lg p-4">
                 <p className="text-white text-center font-semibold">{error}</p>
               </div>
             )}
 
-            <button
-              onClick={validateAndSubmit}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-6 px-8 rounded-lg text-xl transition-all transform hover:scale-105 shadow-lg"
-            >
-              ✅ Lämna in gissningar
-            </button>
+            <div className="space-y-4">
+              <button
+                onClick={validateAndSubmit}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-6 px-8 rounded-lg text-xl transition-all transform hover:scale-105 shadow-lg"
+              >
+                ✅ Lämna in gissningar
+              </button>
+              <button
+                onClick={leaveGame}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all"
+              >
+                Lämna spel
+              </button>
+            </div>
           </div>
         ) : (
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-12 text-center">
@@ -145,14 +151,29 @@ export default function GuessingPhase() {
                   </div>
                 ))}
               </div>
-            </div>
+            </div>            {isHost && (
+              <div className="mt-8 space-y-4">
+                <button
+                  onClick={endGuessing}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all"
+                >
+                  🏁 Avsluta och visa resultat
+                </button>
+                <button
+                  onClick={leaveGame}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all"
+                >
+                  Lämna spel
+                </button>
+              </div>
+            )}
 
-            {isHost && (
+            {!isHost && (
               <button
-                onClick={endGuessing}
-                className="mt-8 bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all"
+                onClick={leaveGame}
+                className="mt-8 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all"
               >
-                🏁 Avsluta och visa resultat
+                Lämna spel
               </button>
             )}
           </div>

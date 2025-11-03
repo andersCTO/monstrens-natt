@@ -7,6 +7,8 @@ import Lobby from '@/components/Lobby';
 import MingelPhase from '@/components/MingelPhase';
 import GuessingPhase from '@/components/GuessingPhase';
 import ResultsPhase from '@/components/ResultsPhase';
+import ConnectionStatus from '@/components/ConnectionStatus';
+import DisconnectionWarning from '@/components/DisconnectionWarning';
 
 export default function Home() {
   const { phase, connectSocket, gameCode } = useGameStore();
@@ -23,10 +25,10 @@ export default function Home() {
         <div className="text-white text-2xl">Laddar...</div>
       </div>
     );
-  }
-
-  return (
+  }  return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-black">
+      <ConnectionStatus />
+      <DisconnectionWarning />
       {!gameCode && <StartScreen />}
       {gameCode && phase === 'lobby' && <Lobby />}
       {phase === 'mingel' && <MingelPhase />}

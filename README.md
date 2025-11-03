@@ -58,10 +58,12 @@ http://localhost:3000
 4. Starta spelet när alla har anslutit
 
 ### För Spelare
-1. Klicka "Gå med i spel"
-2. Ange namn och spelkod
-3. Vänta på att värden startar
-4. Se din hemliga roll och mingla!
+1. Se listan över aktiva spel på startsidan
+2. Klicka "Gå med" på ett aktivt spel eller "Gå med i spel" för att ange kod manuellt
+3. Ange ditt namn (och spelkod om du valde manuell inmatning)
+4. Vänta på att värden startar
+5. Se din hemliga roll och mingla!
+6. Använd "Lämna spel"-knappen om du behöver avbryta
 
 ## 🎮 Spelregler
 
@@ -99,11 +101,26 @@ monstrens-natt-app/
 - ✅ Realtids multiplayer med Socket.IO
 - ✅ Responsiv design för mobil och desktop
 - ✅ Automatisk rolltilldelning
-- ✅ Timer för mingelfas
+- ✅ Manuell kontroll av mingelfas (värden avslutar)
 - ✅ Validering av gissningar
 - ✅ Automatisk poängräkning
 - ✅ Vacker gradient UI med Tailwind CSS
 - ✅ Full svensk språkstöd
+- ✅ **Visa aktiva spel på startsidan**
+- ✅ **Lämna spel och återgå till lobby**
+- ✅ **Lokal lagring för att överleva serveravbrott**
+- ✅ **Anslutningsstatus-indikator**
+- ✅ **Automatisk värdöverföring vid frånkoppling**
+
+## 📚 Dokumentation
+
+- **QUICKSTART.md** - Snabbstartsguide
+- **START_HERE.md** - Detaljerad introduktion
+- **DEPLOYMENT.md** - Guide för deployment
+- **LOCAL_NETWORK.md** - Spela över WiFi
+- **TROUBLESHOOTING.md** - Felsökningsguide
+- **CONNECTION_STATUS.md** - Guide för anslutningsstatus
+- **ACTIVE_GAMES_FEATURE.md** - Aktiva spel & lämna spel-funktionalitet
 
 ## 📝 Licens
 

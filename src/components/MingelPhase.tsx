@@ -1,24 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { getFactionByName } from '@/lib/factions';
 
 export default function MingelPhase() {
-  const { faction, mingelDuration, mingelStartTime } = useGameStore();
-  const [timeLeft, setTimeLeft] = useState(mingelDuration * 60);
+  const { faction, isHost, leaveGame } = useGameStore();
 
-  useEffect(() => {
-    if (!mingelStartTime) return;
-
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - mingelStartTime) / 1000);
-      const remaining = Math.max(0, mingelDuration * 60 - elapsed);
-      setTimeLeft(remaining);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [mingelStartTime, mingelDuration]);
+  const endMingel = () => {
+    useGameStore.setState({ phase: 'guessing' });
+  };
 
   if (!faction) {
     return (
@@ -27,35 +17,14 @@ export default function MingelPhase() {
       </div>
     );
   }
-  const factionData = getFactionByName(faction);
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
 
-  // Auto-transition to guessing phase when timer reaches 0
-  useEffect(() => {
-    if (timeLeft === 0) {
-      const timeout = setTimeout(() => {
-        useGameStore.setState({ phase: 'guessing' });
-      }, 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [timeLeft]);
+  const factionData = getFactionByName(faction);
 
   return (
     <div className="min-h-screen p-4 flex items-center justify-center">
       <div className="max-w-4xl w-full">
-        {/* Timer */}
-        <div className="text-center mb-8">
-          <div className="bg-white/20 backdrop-blur-md rounded-lg p-6 inline-block">
-            <p className="text-5xl font-bold text-white font-mono">
-              {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-            </p>
-            <p className="text-purple-200 mt-2">Tid kvar</p>
-          </div>
-        </div>
-
         {/* Role Card */}
-        <div className={`${factionData.color} rounded-xl shadow-2xl overflow-hidden`}>
+        <div className="bg-indigo-800 rounded-xl shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="bg-black/30 p-6 text-center">
             <div className="text-7xl mb-4">{factionData.symbol}</div>
@@ -119,13 +88,40 @@ export default function MingelPhase() {
               </p>
             </div>
           </div>
-        </div>
+        </div>        {/* Host Controls */}
+        {isHost && (
+          <div className="text-center mt-8 space-y-4">
+            <button
+              onClick={endMingel}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-6 px-12 rounded-lg text-xl transition-all transform hover:scale-105 shadow-lg"
+            >
+              ✅ Avsluta mingel och börja gissningsfasen
+            </button>
+            <button
+              onClick={leaveGame}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all"
+            >
+              Lämna spel
+            </button>
+          </div>
+        )}
 
-        <div className="text-center mt-8 text-purple-200">
-          <p className="text-lg">
-            Mingla med de andra spelarna och försök lista ut vem som tillhör vilken fraktion!
-          </p>
-        </div>
+        {!isHost && (
+          <div className="text-center mt-8 space-y-4">
+            <p className="text-lg text-purple-200">
+              Mingla med de andra spelarna och försök lista ut vem som tillhör vilken fraktion!
+            </p>
+            <p className="text-sm opacity-75 text-purple-200">
+              Värden avslutar mingelfasen när det är dags
+            </p>
+            <button
+              onClick={leaveGame}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all"
+            >
+              Lämna spel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
