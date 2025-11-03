@@ -19,10 +19,6 @@ export default function StartScreen() {
   }, [getActiveGames]);
 
   const handleCreateGame = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      setError('Ange både förnamn och efternamn');
-      return;
-    }
     if (!gameName.trim()) {
       setError('Ange ett namn för spelsessionen');
       return;
@@ -30,8 +26,8 @@ export default function StartScreen() {
     setLoading(true);
     setError('');
     try {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`;
-      await createGame(fullName, gameName.trim());
+      // Host doesn't need a player name since they're not an active player
+      await createGame('Värd', gameName.trim());
     } catch (err) {
       setError('Kunde inte skapa spel');
     } finally {
@@ -104,31 +100,10 @@ export default function StartScreen() {
                 onKeyPress={(e) => e.key === 'Enter' && handleCreateGame()}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-purple-200 mb-2">Förnamn (ditt riktiga namn)</label>
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-white/20 text-white placeholder-purple-300 border-2 border-purple-400 focus:border-purple-200 outline-none"
-                  placeholder="Ditt förnamn"
-                  maxLength={20}
-                  onKeyPress={(e) => e.key === 'Enter' && handleCreateGame()}
-                />
-              </div>
-              <div>
-                <label className="block text-purple-200 mb-2">Efternamn</label>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-white/20 text-white placeholder-purple-300 border-2 border-purple-400 focus:border-purple-200 outline-none"
-                  placeholder="Ditt efternamn"
-                  maxLength={20}
-                  onKeyPress={(e) => e.key === 'Enter' && handleCreateGame()}
-                />
-              </div>
+            <div className="bg-purple-500/20 border border-purple-400 rounded-lg p-4">
+              <p className="text-purple-200 text-sm">
+                💡 Som värd skapar du spelet och styr spelflödet, men deltar inte som aktiv spelare.
+              </p>
             </div>
             {error && <p className="text-red-300 text-sm">{error}</p>}
             <div className="flex space-x-4">
@@ -137,8 +112,6 @@ export default function StartScreen() {
                   setMode('menu');
                   setError('');
                   setGameName('');
-                  setFirstName('');
-                  setLastName('');
                 }}
                 className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg"
                 disabled={loading}

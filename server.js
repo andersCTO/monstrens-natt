@@ -38,7 +38,7 @@ app.prepare().then(() => {
       const activeGames = Array.from(games.values()).map(game => ({
         code: game.code,
         name: game.name || 'Monstrens Natt',
-        playerCount: game.players.size,
+        playerCount: Array.from(game.players.values()).filter(p => !p.isHost).length,
         phase: game.phase,
         hostName: Array.from(game.players.values()).find(p => p.isHost)?.name || 'Okänd'
       }));
@@ -218,11 +218,30 @@ app.prepare().then(() => {
       broadcastActiveGames();
     });
 
+    socket.on('delete-game', (code) => {
+      const game = games.get(code);
+      if (!game) return;
+      
+      // Only host can delete the game
+      if (game.hostId !== socket.id) return;
+
+      // Notify all players that the game is being deleted
+      io.to(code).emit('game-deleted', { message: 'Spelet har avslutats av värden' });
+
+      // Delete the game
+      games.delete(code);
+      console.log(`Game ${code} deleted by host`);
+      
+      // Broadcast updated game list
+      broadcastActiveGames();
+    });
+
     socket.on('start-game', (code) => {
       const game = games.get(code);
       if (!game || game.hostId !== socket.id) return;
 
-      const players = Array.from(game.players.values());
+      // Only assign factions to non-host players
+      const players = Array.from(game.players.values()).filter(p => !p.isHost);
       const factionAssignments = assignFactions(players);
 
       factionAssignments.forEach((faction, playerId) => {
@@ -233,9 +252,20 @@ app.prepare().then(() => {
       game.phase = 'mingel';
       game.mingelStartTime = Date.now();
 
+      // Send role assignments only to non-host players
       factionAssignments.forEach((faction, playerId) => {
         io.to(playerId).emit('role-assigned', { faction });
       });
+
+      // Send all player factions to host
+      const allPlayerFactions = Array.from(game.players.values())
+        .filter(p => !p.isHost)
+        .map(p => ({
+          id: p.id,
+          name: p.name,
+          faction: p.faction
+        }));
+      io.to(game.hostId).emit('host-view-data', { players: allPlayerFactions });
 
       io.to(code).emit('phase-changed', {
         phase: 'mingel',
@@ -280,7 +310,7 @@ app.prepare().then(() => {
       const game = games.get(code);
       if (!game || game.hostId !== socket.id) return;
 
-      const players = Array.from(game.players.values());
+      const players = Array.from(game.players.values()).filter(p => !p.isHost);
       const scores = calculateScores(players, game.submissions);
       game.scores = scores;
       game.phase = 'results';
@@ -343,7 +373,7 @@ app.prepare().then(() => {
     const activeGames = Array.from(games.values()).map(game => ({
       code: game.code,
       name: game.name || 'Monstrens Natt',
-      playerCount: game.players.size,
+      playerCount: Array.from(game.players.values()).filter(p => !p.isHost).length,
       phase: game.phase,
       hostName: Array.from(game.players.values()).find(p => p.isHost)?.name || 'Okänd'
     }));
@@ -353,24 +383,35 @@ app.prepare().then(() => {
   function assignFactions(players) {
     const assignments = new Map();
     const factions = ['Vampyr', 'Varulv', 'Häxa', 'Monsterjägare', 'De Fördömda'];
-    let factionsToUse = players.length < 10 ? factions.slice(0, Math.max(3, Math.floor(players.length / 2))) : factions;
     
-    const playersPerFaction = Math.max(2, Math.floor(players.length / factionsToUse.length));
+    // Always use all 5 factions for even distribution
+    const factionsToUse = factions;
+    const playerCount = players.length;
+    
+    // Calculate base number of players per faction
+    const basePerFaction = Math.floor(playerCount / factionsToUse.length);
+    const remainder = playerCount % factionsToUse.length;
+    
+    // Build faction pool with even distribution
     const factionPool = [];
     
-    factionsToUse.forEach(faction => {
-      for (let i = 0; i < playersPerFaction; i++) {
+    factionsToUse.forEach((faction, index) => {
+      // First 'remainder' factions get one extra player
+      const count = basePerFaction + (index < remainder ? 1 : 0);
+      for (let i = 0; i < count; i++) {
         factionPool.push(faction);
       }
     });
     
-    while (factionPool.length < players.length) {
-      factionPool.push(factionsToUse[factionPool.length % factionsToUse.length]);
+    // Fisher-Yates shuffle for true randomization
+    for (let i = factionPool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [factionPool[i], factionPool[j]] = [factionPool[j], factionPool[i]];
     }
     
-    const shuffled = factionPool.sort(() => Math.random() - 0.5);
+    // Assign shuffled factions to players
     players.forEach((player, index) => {
-      assignments.set(player.id, shuffled[index]);
+      assignments.set(player.id, factionPool[index]);
     });
     
     return assignments;

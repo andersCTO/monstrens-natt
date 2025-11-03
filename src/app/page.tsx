@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import StartScreen from '@/components/StartScreen';
 import Lobby from '@/components/Lobby';
-import MingelPhase from '@/components/MingelPhase';
 import GuessingPhase from '@/components/GuessingPhase';
 import ResultsPhase from '@/components/ResultsPhase';
 import ConnectionStatus from '@/components/ConnectionStatus';
@@ -31,8 +30,7 @@ export default function Home() {
       <DisconnectionWarning />
       {!gameCode && <StartScreen />}
       {gameCode && phase === 'lobby' && <Lobby />}
-      {phase === 'mingel' && <MingelPhase />}
-      {phase === 'guessing' && <GuessingPhase />}
+      {(phase === 'mingel' || phase === 'guessing') && <GuessingPhase />}
       {phase === 'results' && <ResultsPhase />}
     </div>
   );

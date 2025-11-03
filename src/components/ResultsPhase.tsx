@@ -22,6 +22,27 @@ export default function ResultsPhase() {
     return revealedPlayers.find(p => p.id === playerId);
   };
 
+  // Calculate faction scores
+  const getFactionScores = () => {
+    const factionScores: Record<string, number> = {};
+    
+    scores.forEach((score) => {
+      const player = getPlayerFaction(score.playerId);
+      if (player?.faction) {
+        if (!factionScores[player.faction]) {
+          factionScores[player.faction] = 0;
+        }
+        factionScores[player.faction] += score.score;
+      }
+    });
+    
+    return Object.entries(factionScores)
+      .map(([faction, totalScore]) => ({ faction, totalScore }))
+      .sort((a, b) => b.totalScore - a.totalScore);
+  };
+
+  const factionScores = showResults ? getFactionScores() : [];
+
   if (!showResults) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -108,6 +129,43 @@ export default function ResultsPhase() {
                   </div>
                   <div className="text-4xl font-bold text-white">
                     {score.score > 0 ? '+' : ''}{score.score}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Faction Scores */}
+        <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 mb-8">
+          <h2 className="text-3xl font-bold text-white mb-6">Fraktionspoäng</h2>
+          <div className="space-y-3">
+            {factionScores.map((factionScore, index) => {
+              const factionData = getFactionByName(factionScore.faction as any);
+              
+              return (
+                <div
+                  key={factionScore.faction}
+                  className={`rounded-lg p-6 flex items-center justify-between ${
+                    index === 0
+                      ? 'bg-yellow-500/30 border-2 border-yellow-400'
+                      : 'bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="text-3xl font-bold text-white w-12">
+                      {index === 0 && '👑'}
+                      {index > 0 && `${index + 1}.`}
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-4xl">{factionData.symbol}</span>
+                      <p className="text-2xl font-bold text-white">
+                        {factionData.name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-4xl font-bold text-white">
+                    {factionScore.totalScore > 0 ? '+' : ''}{factionScore.totalScore}
                   </div>
                 </div>
               );

@@ -28,6 +28,7 @@ interface GameState {
   isConnected: boolean;
   connectionError: string | null;
   activeGames: ActiveGame[];
+  hostViewPlayers: { id: string; name: string; faction: Faction }[];
   
   connectSocket: () => void;
   createGame: (playerName: string, gameName: string) => Promise<void>;
@@ -37,6 +38,7 @@ interface GameState {
   submitGuesses: (guesses: any[]) => void;
   endGuessing: () => void;
   leaveGame: () => void;
+  deleteGame: () => void;
   getActiveGames: () => void;
   reset: () => void;
 }
@@ -60,6 +62,7 @@ export const useGameStore = create<GameState>()(
       isConnected: false,
       connectionError: null,
       activeGames: [],
+      hostViewPlayers: [],
 
       connectSocket: () => {
         const socketUrl = typeof window !== 'undefined' 
@@ -124,6 +127,10 @@ export const useGameStore = create<GameState>()(
           set({ faction: data.faction });
         });
 
+        socket.on('host-view-data', (data: { players: { id: string; name: string; faction: Faction }[] }) => {
+          set({ hostViewPlayers: data.players });
+        });
+
         socket.on('phase-changed', (data: { phase: GamePhase; mingelDuration: number; startTime: number }) => {
           set({ 
             phase: data.phase,
@@ -152,10 +159,26 @@ export const useGameStore = create<GameState>()(
           set({ activeGames: games });
         });
 
+        socket.on('game-deleted', (data: { message: string }) => {
+          set({
+            gameCode: '',
+            playerId: '',
+            playerName: '',
+            isHost: false,
+            players: [],
+            phase: 'lobby',
+            faction: null,
+            mingelStartTime: null,
+            submissions: [],
+            scores: [],
+            revealedPlayers: [],
+            connectionError: data.message,
+            hostViewPlayers: [],
+          });
+        });
+        
         set({ socket });
-      },
-
-      createGame: async (playerName: string, gameName: string) => {
+      },      createGame: async (playerName: string, gameName: string) => {
         const socket = get().socket;
         if (!socket) return;
 
@@ -245,6 +268,35 @@ export const useGameStore = create<GameState>()(
           scores: [],
           revealedPlayers: [],
           connectionError: null,
+        });
+
+        if (socket) {
+          socket.emit('get-active-games');
+        }
+      },
+
+      deleteGame: () => {
+        const socket = get().socket;
+        const code = get().gameCode;
+        
+        if (socket && code) {
+          socket.emit('delete-game', code);
+        }
+
+        set({
+          gameCode: '',
+          playerId: '',
+          playerName: '',
+          isHost: false,
+          players: [],
+          phase: 'lobby',
+          faction: null,
+          mingelStartTime: null,
+          submissions: [],
+          scores: [],
+          revealedPlayers: [],
+          connectionError: null,
+          hostViewPlayers: [],
         });
 
         if (socket) {

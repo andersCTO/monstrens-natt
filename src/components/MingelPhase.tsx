@@ -1,20 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { getFactionByName } from '@/lib/factions';
+import { getRandomizedFactionData } from '@/lib/factions';
+import { FactionData } from '@/types/game';
 
 export default function MingelPhase() {
-  const { faction, isHost, leaveGame, endMingel } = useGameStore();
+  const { faction, isHost, leaveGame, endMingel, gameCode } = useGameStore();
+  const [factionData, setFactionData] = useState<FactionData | null>(null);
 
-  if (!faction) {
+  useEffect(() => {
+    if (faction) {
+      // Generate randomized faction data once when component mounts or game changes
+      const randomData = getRandomizedFactionData(faction);
+      setFactionData(randomData);
+    }
+  }, [faction, gameCode]);
+
+  if (!faction || !factionData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-white text-2xl">Laddar din roll...</p>
       </div>
     );
   }
-
-  const factionData = getFactionByName(faction);
 
   return (
     <div className="min-h-screen p-4 flex items-center justify-center">
