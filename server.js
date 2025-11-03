@@ -223,6 +223,19 @@ app.prepare().then(() => {
       });
     });
 
+    socket.on('end-mingel', (code) => {
+      const game = games.get(code);
+      if (!game || game.hostId !== socket.id) return;
+
+      game.phase = 'guessing';
+      
+      io.to(code).emit('phase-changed', {
+        phase: 'guessing',
+        mingelDuration: game.mingelDuration,
+        startTime: game.mingelStartTime
+      });
+    });
+
     socket.on('submit-guesses', (data) => {
       const { code, guesses } = data;
       const game = games.get(code);
@@ -255,6 +268,16 @@ app.prepare().then(() => {
         scores,
         players: players.map(p => ({ id: p.id, name: p.name, faction: p.faction }))
       });
+
+      // Delete game after 5 minutes to clean up
+      setTimeout(() => {
+        const stillExists = games.get(code);
+        if (stillExists && stillExists.phase === 'results') {
+          games.delete(code);
+          console.log(`Game ${code} deleted after completion`);
+          broadcastActiveGames();
+        }
+      }, 5 * 60 * 1000); // 5 minutes
     });
 
     socket.on('disconnect', () => {

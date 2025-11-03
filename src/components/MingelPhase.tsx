@@ -4,11 +4,7 @@ import { useGameStore } from '@/store/gameStore';
 import { getFactionByName } from '@/lib/factions';
 
 export default function MingelPhase() {
-  const { faction, isHost, leaveGame } = useGameStore();
-
-  const endMingel = () => {
-    useGameStore.setState({ phase: 'guessing' });
-  };
+  const { faction, isHost, leaveGame, endMingel } = useGameStore();
 
   if (!faction) {
     return (

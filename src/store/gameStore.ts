@@ -32,6 +32,7 @@ interface GameState {
   createGame: (playerName: string) => Promise<void>;
   joinGame: (code: string, playerName: string) => Promise<{ success: boolean; error?: string }>;
   startGame: () => void;
+  endMingel: () => void;
   submitGuesses: (guesses: any[]) => void;
   endGuessing: () => void;
   leaveGame: () => void;
@@ -197,13 +198,20 @@ export const useGameStore = create<GameState>()(
         socket.emit('start-game', code);
       },
 
+      endMingel: () => {
+        const socket = get().socket;
+        const code = get().gameCode;
+        if (!socket || !code) return;
+        
+        socket.emit('end-mingel', code);
+      },
+
       submitGuesses: (guesses: any[]) => {
         const socket = get().socket;
         const code = get().gameCode;
         if (!socket || !code) return;
         
         socket.emit('submit-guesses', { code, guesses });
-        set({ phase: 'guessing' });
       },
 
       endGuessing: () => {

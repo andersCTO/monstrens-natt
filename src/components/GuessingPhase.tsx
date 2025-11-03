@@ -33,23 +33,15 @@ export default function GuessingPhase() {
   };
 
   const validateAndSubmit = () => {
-    // Check all factions have 2 selections
-    for (const faction of Object.keys(guesses) as Faction[]) {
-      if (guesses[faction][0] === '' || guesses[faction][1] === '') {
-        setError('Du måste välja exakt 2 spelare för varje fraktion');
-        return;
-      }
-    }
-
-    // Check for duplicates
-    const allSelected = Object.values(guesses).flat();
-    const uniqueSelected = new Set(allSelected.filter(id => id !== ''));
-    if (uniqueSelected.size !== allSelected.filter(id => id !== '').length) {
+    // Check for duplicates in filled fields only
+    const allSelected = Object.values(guesses).flat().filter(id => id !== '');
+    const uniqueSelected = new Set(allSelected);
+    if (uniqueSelected.size !== allSelected.length) {
       setError('Du har valt samma spelare flera gånger');
       return;
     }
 
-    // Convert to GameGuess format
+    // Convert to GameGuess format (include empty guesses)
     const gameGuesses: GameGuess[] = Object.entries(guesses).map(([faction, playerIds]) => ({
       faction: faction as Faction,
       players: playerIds
@@ -68,7 +60,10 @@ export default function GuessingPhase() {
             🔍 Identifieringsfas
           </h1>
           <p className="text-xl text-purple-200">
-            Välj exakt 2 spelare för varje fraktion
+            Gissa vilka spelare som tillhör varje fraktion
+          </p>
+          <p className="text-sm text-purple-300 mt-2">
+            Du kan välja 0-2 spelare per fraktion
           </p>
         </div>
 
