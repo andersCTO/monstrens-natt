@@ -5,7 +5,7 @@ import { useGameStore } from '@/store/gameStore';
 import { getFactionByName } from '@/lib/factions';
 
 export default function ResultsPhase() {
-  const { scores, revealedPlayers, reset } = useGameStore();
+  const { scores, revealedPlayers, reset, deleteGame, isHost } = useGameStore();
   const [countdown, setCountdown] = useState(10);
   const [showResults, setShowResults] = useState(false);
 
@@ -116,8 +116,9 @@ export default function ResultsPhase() {
                           {score.playerName}
                         </p>
                         {factionData && (
-                          <span className="bg-indigo-700 px-3 py-1 rounded-full text-white text-sm">
-                            {factionData.symbol} {factionData.name}
+                          <span className="bg-indigo-700 px-3 py-1 rounded-full text-white text-sm flex items-center gap-2">
+                            <img src={factionData.symbol} alt={factionData.name} className="w-5 h-5 object-contain" />
+                            {factionData.name}
                           </span>
                         )}
                       </div>
@@ -158,7 +159,7 @@ export default function ResultsPhase() {
                       {index > 0 && `${index + 1}.`}
                     </div>
                     <div className="flex items-center space-x-3">
-                      <span className="text-4xl">{factionData.symbol}</span>
+                      <img src={factionData.symbol} alt={factionData.name} className="w-16 h-16 object-contain" />
                       <p className="text-2xl font-bold text-white">
                         {factionData.name}
                       </p>
@@ -188,7 +189,7 @@ export default function ResultsPhase() {
                   className="bg-indigo-800 rounded-lg p-4"
                 >
                   <div className="flex items-center mb-3">
-                    <span className="text-3xl mr-2">{factionData.symbol}</span>
+                    <img src={factionData.symbol} alt={factionData.name} className="w-10 h-10 object-contain mr-2" />
                     <h3 className="text-xl font-bold text-white">
                       {factionData.name}
                     </h3>
@@ -209,7 +210,7 @@ export default function ResultsPhase() {
         {/* Play Again Button */}
         <div className="text-center">
           <button
-            onClick={reset}
+            onClick={isHost ? deleteGame : reset}
             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-6 px-12 rounded-lg text-xl transition-all transform hover:scale-105 shadow-lg"
           >
             🔄 Spela igen

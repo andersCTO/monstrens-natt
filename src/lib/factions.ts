@@ -3,7 +3,7 @@ import { Faction, FactionData } from '@/types/game';
 export const FACTIONS: Record<Faction, FactionData> = {
   'Vampyr': {
     name: 'Vampyr',
-    symbol: '🧛',
+    symbol: '/factions/vampyr.png',
     description: 'Odödliga varelser som smyger i nattens skuggor och suger livsenergi ur sina offer.',
     color: 'bg-red-600',
     tellingTales: [
@@ -45,7 +45,7 @@ export const FACTIONS: Record<Faction, FactionData> = {
   },
   'Varulv': {
     name: 'Varulv',
-    symbol: '🐺',
+    symbol: '/factions/varulv.png',
     description: 'Människor med en vild och farlig förbannelse – vid fullmåne förvandlas de till vargliknande monster.',
     color: 'bg-amber-700',
     tellingTales: [
@@ -87,7 +87,7 @@ export const FACTIONS: Record<Faction, FactionData> = {
   },
   'Häxa': {
     name: 'Häxa',
-    symbol: '🔮',
+    symbol: '/factions/haxa.png',
     description: 'Mäktiga utövare av mörk magi, experter på brygder, besvärjelser och förbannelser.',
     color: 'bg-purple-600',
     tellingTales: [
@@ -129,7 +129,7 @@ export const FACTIONS: Record<Faction, FactionData> = {
   },
   'Monsterjägare': {
     name: 'Monsterjägare',
-    symbol: '⚔️',
+    symbol: '/factions/monsterjaegare.png',
     description: 'Modiga krigare dedikerade till att skydda mänskligheten från övernaturliga hot.',
     color: 'bg-blue-600',
     tellingTales: [
@@ -171,7 +171,7 @@ export const FACTIONS: Record<Faction, FactionData> = {
   },
   'De Fördömda': {
     name: 'De Fördömda',
-    symbol: '💀',
+    symbol: '/factions/de-fordomda.png',
     description: 'Dömda själar som varken tillhör de levande eller de döda – rastlösa andar med oavslutade angelägenheter.',
     color: 'bg-gray-700',
     tellingTales: [

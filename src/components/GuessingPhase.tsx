@@ -18,6 +18,36 @@ export default function GuessingPhase() {
   const [error, setError] = useState('');
   const [factionData, setFactionData] = useState<FactionData | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load saved guesses from localStorage on mount
+  useEffect(() => {
+    if (gameCode && playerId) {
+      const savedGuesses = localStorage.getItem(`guesses_${gameCode}_${playerId}`);
+      if (savedGuesses) {
+        try {
+          setGuesses(JSON.parse(savedGuesses));
+        } catch (e) {
+          console.error('Failed to load saved guesses:', e);
+        }
+      }
+      setIsLoaded(true);
+    }
+  }, [gameCode, playerId]);
+
+  // Save guesses to localStorage whenever they change (only after initial load)
+  useEffect(() => {
+    if (gameCode && playerId && !submitted && isLoaded) {
+      localStorage.setItem(`guesses_${gameCode}_${playerId}`, JSON.stringify(guesses));
+    }
+  }, [guesses, gameCode, playerId, submitted, isLoaded]);
+
+  // Check if player has already submitted (for handling refreshes)
+  useEffect(() => {
+    if (playerId && submissions.some(sub => sub.playerId === playerId)) {
+      setSubmitted(true);
+    }
+  }, [playerId, submissions]);
 
   useEffect(() => {
     if (faction) {
@@ -61,7 +91,7 @@ export default function GuessingPhase() {
                     className="bg-indigo-800 rounded-lg p-6"
                   >
                     <div className="flex items-center mb-4">
-                      <span className="text-4xl mr-3">{factionData?.symbol}</span>
+                      <img src={factionData?.symbol} alt={factionName} className="w-12 h-12 object-contain mr-3" />
                       <h3 className="text-2xl font-bold text-white">
                         {factionName}
                       </h3>
@@ -153,22 +183,31 @@ export default function GuessingPhase() {
 
   const validateAndSubmit = () => {
     // Check for duplicates in filled fields only
-    const allSelected = Object.values(guesses).flat().filter(id => id !== '');
+    const allSelected = Object.values(guesses).flat().filter(name => name !== '');
     const uniqueSelected = new Set(allSelected);
     if (uniqueSelected.size !== allSelected.length) {
       setError('Du har valt samma spelare flera gånger');
       return;
     }
 
-    // Convert to GameGuess format (include empty guesses)
-    const gameGuesses: GameGuess[] = Object.entries(guesses).map(([faction, playerIds]) => ({
+    // Convert player names to IDs for submission
+    const gameGuesses: GameGuess[] = Object.entries(guesses).map(([faction, playerNames]) => ({
       faction: faction as Faction,
-      players: playerIds
+      players: playerNames.map(name => {
+        if (!name) return '';
+        const player = players.find(p => p.name === name);
+        return player?.id || '';
+      })
     }));
 
     submitGuesses(gameGuesses);
     setSubmitted(true);
     setError('');
+    
+    // Clear saved guesses from localStorage after successful submit
+    if (gameCode && playerId) {
+      localStorage.removeItem(`guesses_${gameCode}_${playerId}`);
+    }
   };
 
   return (
@@ -191,7 +230,9 @@ export default function GuessingPhase() {
           <div className="mb-8 bg-indigo-800 rounded-xl shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="bg-black/30 p-6 text-center">
-              <div className="text-6xl mb-3">{factionData.symbol}</div>
+              <div className="flex justify-center mb-3">
+                <img src={factionData.symbol} alt={factionData.name} className="w-24 h-24 object-contain" />
+              </div>
               <h2 className="text-3xl font-bold text-white mb-2">
                 Din roll: {factionData.name}
               </h2>
@@ -276,7 +317,7 @@ export default function GuessingPhase() {
                 className="bg-indigo-800 rounded-lg p-6"
               >
                 <div className="flex items-center mb-4">
-                  <span className="text-4xl mr-3">{factionData.symbol}</span>
+                  <img src={factionData.symbol} alt={factionData.name} className="w-12 h-12 object-contain mr-3" />
                   <h3 className="text-2xl font-bold text-white">
                     {factionData.name}
                   </h3>
@@ -284,26 +325,34 @@ export default function GuessingPhase() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[0, 1].map((index) => (
-                    <select
-                      key={index}
-                      value={guesses[factionData.name][index]}
-                      onChange={(e) => handleGuessChange(factionData.name, index, e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg bg-white/20 text-white border-2 border-white/30 focus:border-white outline-none text-lg"
-                    >
-                      <option value="" className="text-black">
-                        Välj spelare {index + 1}
-                      </option>
-                      {availablePlayers.map((player) => (
-                        <option
-                          key={player.id}
-                          value={player.id}
-                          className="text-black"
-                          disabled={guesses[factionData.name].includes(player.id)}
-                        >
-                          {player.name}
+                    <div key={index} className="space-y-2">
+                      <select
+                        value=""
+                        onChange={(e) => handleGuessChange(factionData.name, index, e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg bg-white/20 text-white border-2 border-white/30 focus:border-white outline-none text-lg"
+                      >
+                        <option value="" className="text-black">
+                          Välj spelare {index + 1}
                         </option>
-                      ))}
-                    </select>
+                        {availablePlayers.map((player) => (
+                          <option
+                            key={player.id}
+                            value={player.name}
+                            className="text-black"
+                            disabled={guesses[factionData.name].includes(player.name)}
+                          >
+                            {player.name}
+                          </option>
+                        ))}
+                      </select>
+                      {guesses[factionData.name][index] && (
+                        <div className="bg-green-600/30 border-2 border-green-400 rounded-lg px-4 py-2">
+                          <p className="text-white text-sm font-semibold">
+                            Nuvarande gissning: {guesses[factionData.name][index]}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>

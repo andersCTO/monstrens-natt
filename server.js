@@ -138,6 +138,18 @@ app.prepare().then(() => {
           });
         }
         
+        // If they are host and game has started, send host view data
+        if (player.isHost && (game.phase === 'mingel' || game.phase === 'guessing')) {
+          const allPlayerFactions = Array.from(game.players.values())
+            .filter(p => !p.isHost)
+            .map(p => ({
+              id: p.id,
+              name: p.name,
+              faction: p.faction
+            }));
+          socket.emit('host-view-data', { players: allPlayerFactions });
+        }
+        
       } else {
         // New player joining
         if (game.phase !== 'lobby' && game.phase !== 'mingel') {
@@ -182,6 +194,35 @@ app.prepare().then(() => {
         players: Array.from(game.players.values()),
         hostId: game.hostId
       });
+    });
+
+    socket.on('join-visualization', (code, callback) => {
+      const game = games.get(code);
+      
+      if (!game) {
+        callback({ success: false, error: 'Spelet hittades inte' });
+        return;
+      }
+
+      // Join the game room to receive updates
+      socket.join(code);
+      console.log(`Visualization joined game ${code}`);
+
+      // Send current game state
+      callback({ 
+        success: true, 
+        players: Array.from(game.players.values()),
+        phase: game.phase
+      });
+
+      // Send phase info if game has started
+      if (game.phase !== 'lobby') {
+        socket.emit('phase-changed', {
+          phase: game.phase,
+          mingelDuration: game.mingelDuration,
+          startTime: game.mingelStartTime
+        });
+      }
     });
 
     socket.on('leave-game', (code) => {
@@ -280,6 +321,16 @@ app.prepare().then(() => {
 
       game.phase = 'guessing';
       
+      // Send updated host view data to host
+      const allPlayerFactions = Array.from(game.players.values())
+        .filter(p => !p.isHost)
+        .map(p => ({
+          id: p.id,
+          name: p.name,
+          faction: p.faction
+        }));
+      io.to(game.hostId).emit('host-view-data', { players: allPlayerFactions });
+      
       io.to(code).emit('phase-changed', {
         phase: 'guessing',
         mingelDuration: game.mingelDuration,
@@ -337,23 +388,22 @@ app.prepare().then(() => {
       games.forEach((game, code) => {
         if (game.players.has(socket.id)) {
           const disconnectedPlayer = game.players.get(socket.id);
+          
+          if (!disconnectedPlayer) {
+            console.log(`Warning: Player data not found for socket ${socket.id} in game ${code}`);
+            game.players.delete(socket.id);
+            return;
+          }
+          
           console.log(`Player ${disconnectedPlayer.name} disconnected from game ${code}`);
           
           // Mark player as disconnected but keep them in the game
           disconnectedPlayer.disconnected = true;
 
-          // If the host disconnected, transfer host to another connected player
+          // If the host disconnected, DON'T transfer host to regular players
+          // Only the original host should be host (they are the game creator/observer)
           if (game.hostId === socket.id) {
-            const connectedPlayers = Array.from(game.players.values()).filter(p => !p.disconnected);
-            if (connectedPlayers.length > 0) {
-              const newHost = connectedPlayers[0];
-              game.hostId = newHost.id;
-              newHost.isHost = true;
-              console.log(`Host transferred to ${newHost.name}`);
-            } else {
-              // All players disconnected, but keep the game alive for reconnection
-              console.log(`All players disconnected from game ${code}, keeping game alive`);
-            }
+            console.log(`Host ${disconnectedPlayer.name} disconnected from game ${code}, keeping host role for reconnection`);
           }
 
           // Notify other players

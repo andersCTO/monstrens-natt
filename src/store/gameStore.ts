@@ -83,19 +83,33 @@ export const useGameStore = create<GameState>()(
           set({ isConnected: true, connectionError: null });
           
           const currentGameCode = get().gameCode;
-          if (currentGameCode) {
-            socket.emit('validate-game', currentGameCode, (response: { valid: boolean; reason?: string }) => {
-              if (!response.valid) {
-                console.log('Game no longer exists:', response.reason);
-                set({ 
-                  connectionError: response.reason || 'Spelet finns inte längre',
-                  gameCode: '',
-                  players: [],
-                  phase: 'lobby',
-                  faction: null,
-                });
+          const currentPlayerName = get().playerName;
+          
+          // If we have a game code and player name, rejoin the game
+          if (currentGameCode && currentPlayerName) {
+            console.log(`Attempting to rejoin game ${currentGameCode} as ${currentPlayerName}`);
+            socket.emit('join-game', 
+              { code: currentGameCode, playerName: currentPlayerName }, 
+              (result: { success: boolean; error?: string; playerId?: string }) => {
+                if (result.success && result.playerId) {
+                  console.log('Successfully rejoined game');
+                  set({ 
+                    playerId: result.playerId,
+                    connectionError: null
+                  });
+                } else {
+                  console.log('Failed to rejoin game:', result.error);
+                  set({ 
+                    connectionError: result.error || 'Kunde inte återansluta till spelet',
+                    gameCode: '',
+                    players: [],
+                    phase: 'lobby',
+                    faction: null,
+                    hostViewPlayers: [],
+                  });
+                }
               }
-            });
+            );
           }
 
           socket.emit('get-active-games');
