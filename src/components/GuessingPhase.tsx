@@ -19,6 +19,7 @@ export default function GuessingPhase() {
   const [factionData, setFactionData] = useState<FactionData | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showRolePopup, setShowRolePopup] = useState(false);
 
   // Load saved guesses from localStorage on mount
   useEffect(() => {
@@ -225,72 +226,122 @@ export default function GuessingPhase() {
           </p>
         </div>
 
-        {/* Role Card - Always visible */}
+        {/* Button to show role information */}
         {faction && factionData && (
-          <div className="mb-8 bg-indigo-800 rounded-xl shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="bg-black/30 p-6 text-center">
-              <div className="flex justify-center mb-3">
-                <img src={factionData.symbol} alt={factionData.name} className="w-24 h-24 object-contain" />
-              </div>
-              <h2 className="text-3xl font-bold text-white mb-2">
-                Din roll: {factionData.name}
-              </h2>
-              <p className="text-lg text-white/90">{factionData.description}</p>
-            </div>
+          <div className="mb-8 text-center">
+            <button
+              onClick={() => setShowRolePopup(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center gap-2 mx-auto"
+            >
+              <span>🎭</span>
+              <span>Visa min roll</span>
+            </button>
+          </div>
+        )}
 
-            {/* Content */}
-            <div className="bg-white/10 backdrop-blur-sm p-6 space-y-4">
-              {/* Telling Tales */}
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">
-                  🎭 Rörelsevana
-                </h3>
-                <ul className="space-y-1">
-                  {factionData.tellingTales.map((tale, index) => (
-                    <li key={index} className="text-white/90 text-base">
-                      • {tale}
-                    </li>
-                  ))}
-                </ul>
+        {/* Role Popup Modal */}
+        {showRolePopup && faction && factionData && (
+          <div 
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowRolePopup(false)}
+          >
+            <div 
+              className="bg-gradient-to-br from-gray-900 via-purple-950 to-black rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border-4 border-purple-400 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close button */}
+              <div className="sticky top-0 bg-black/50 backdrop-blur-sm p-4 flex justify-between items-center border-b border-purple-400/30 z-10">
+                <h2 className="text-2xl font-bold text-white">Din hemliga roll</h2>
+                <button
+                  onClick={() => setShowRolePopup(false)}
+                  className="text-white hover:text-red-400 text-3xl font-bold transition-colors"
+                >
+                  ×
+                </button>
               </div>
 
-              {/* Forbidden Words */}
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">
-                  🚫 Förbjudna ord
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {factionData.forbiddenWords.map((word, index) => (
-                    <span
-                      key={index}
-                      className="bg-red-600/50 text-white px-3 py-1 rounded-full font-semibold text-sm"
-                    >
-                      {word}
-                    </span>
-                  ))}
+              {/* Content */}
+              <div className="p-6">
+                {/* Header */}
+                <div className="bg-black/30 p-6 rounded-xl text-center mb-6">
+                  <div className="flex justify-center mb-3">
+                    <img src={factionData.symbol} alt={factionData.name} className="w-24 h-24 object-contain" />
+                  </div>
+                  <h2 className="text-3xl font-bold text-white mb-2">
+                    {factionData.name}
+                  </h2>
+                  <p className="text-lg text-white/90 italic">{factionData.description}</p>
                 </div>
-              </div>
 
-              {/* Favorite Phrases */}
-              <div>
-                <h3 className="text-xl font-bold text-white mb-2">
-                  💬 Favoritfraser
-                </h3>
-                <ul className="space-y-1">
-                  {factionData.favoritePhrases.map((phrase, index) => (
-                    <li key={index} className="text-white/90 text-base italic">
-                      "{phrase}"
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                {/* Information cards */}
+                <div className="space-y-4">
+                  {/* Telling Tales */}
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <h3 className="text-xl font-bold text-purple-300 mb-3 flex items-center gap-2">
+                      <span>🎭</span>
+                      <span>Avslöjande Beteenden</span>
+                    </h3>
+                    <ul className="space-y-2">
+                      {factionData.tellingTales.map((tale, index) => (
+                        <li key={index} className="text-white/90 text-sm flex items-start gap-2">
+                          <span className="text-purple-400">•</span>
+                          <span>{tale}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
-              {/* Reminder */}
-              <div className="bg-yellow-500/20 border-2 border-yellow-400 rounded-lg p-3 mt-4">
-                <p className="text-white font-semibold text-center text-sm">
-                  ⚠️ Viktig regel: Du får INTE avslöja din roll direkt!
-                </p>
+                  {/* Forbidden Words */}
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <h3 className="text-xl font-bold text-red-300 mb-3 flex items-center gap-2">
+                      <span>🚫</span>
+                      <span>Förbjudna Ord</span>
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {factionData.forbiddenWords.map((word, index) => (
+                        <span
+                          key={index}
+                          className="bg-red-600/40 text-white px-3 py-1 rounded-full font-semibold text-sm border border-red-400/50"
+                        >
+                          {word}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Favorite Phrases */}
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                    <h3 className="text-xl font-bold text-green-300 mb-3 flex items-center gap-2">
+                      <span>💬</span>
+                      <span>Favoritfraser</span>
+                    </h3>
+                    <ul className="space-y-2">
+                      {factionData.favoritePhrases.map((phrase, index) => (
+                        <li key={index} className="text-white/90 text-sm italic flex items-start gap-2">
+                          <span className="text-green-400">✓</span>
+                          <span>"{phrase}"</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Reminder */}
+                  <div className="bg-yellow-500/20 border-2 border-yellow-400 rounded-lg p-4">
+                    <p className="text-white font-semibold text-center">
+                      ⚠️ Viktig regel: Du får INTE avslöja din roll direkt!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Close button at bottom */}
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setShowRolePopup(false)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg transition-all"
+                  >
+                    Stäng
+                  </button>
+                </div>
               </div>
             </div>
           </div>

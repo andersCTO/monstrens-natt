@@ -374,10 +374,26 @@ app.prepare().then(() => {
       game.scores = scores;
       game.phase = 'results';
 
+      // Send to all players in the game
       io.to(code).emit('game-results', {
         scores,
         players: players.map(p => ({ id: p.id, name: p.name, faction: p.faction }))
       });
+
+      // Send to visualization (using the format it expects)
+      io.to(code).emit('results', {
+        scores: scores.map(s => {
+          const player = players.find(p => p.id === s.playerId);
+          return {
+            playerName: player?.name || 'Unknown',
+            score: s.score,
+            faction: player?.faction || 'Unknown'
+          };
+        })
+      });
+
+      // Also emit phase change
+      io.to(code).emit('phase-changed', { phase: 'results' });
 
       // Delete game immediately after showing results
       setTimeout(() => {

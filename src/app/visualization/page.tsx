@@ -25,6 +25,8 @@ interface Creature {
   targetY?: number;
   score?: number; // Player's score
   isMovingToTarget?: boolean; // Whether creature is moving to target position
+  isVillager?: boolean; // Is this a villager (not a player)
+  villagerGender?: 'male' | 'female'; // Gender of villager
 }
 
 interface ActiveGame {
@@ -43,6 +45,24 @@ const FACTION_CONFIG: Record<Faction, { color: string; imagePath: string }> = {
   'De Fördömda': { color: '#2F4F4F', imagePath: '/factions/de-fordomda.png' }
 };
 
+// Define which factions each faction avoids
+const FACTION_AVOIDANCE: Record<Faction, Faction[]> = {
+  'Vampyr': ['Monsterjägare', 'Varulv'],
+  'Varulv': ['Monsterjägare', 'Häxa', 'Vampyr'],
+  'Häxa': ['Monsterjägare', 'Varulv'],
+  'Monsterjägare': ['De Fördömda'],
+  'De Fördömda': [] // Avoids no one
+};
+
+// Define which factions each faction hunts (opposite of avoidance)
+const FACTION_HUNTING: Record<Faction, Faction[]> = {
+  'Vampyr': [],
+  'Varulv': [],
+  'Häxa': [],
+  'Monsterjägare': ['Vampyr', 'Varulv', 'Häxa'],
+  'De Fördömda': ['Vampyr', 'Varulv', 'Häxa', 'Monsterjägare']
+};
+
 export default function VisualizationPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -50,6 +70,7 @@ export default function VisualizationPage() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [creatures, setCreatures] = useState<Creature[]>([]);
   const creaturesRef = useRef<Creature[]>([]);
+  const isInitialized = useRef(false); // Track if creatures have been initialized
   const [gameCode, setGameCode] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [gamePhase, setGamePhase] = useState<string>('');
@@ -203,7 +224,14 @@ export default function VisualizationPage() {
     if (!socket) return;
 
     socket.on('lobby-update', (data: { players: any[] }) => {
-      updateCreatures(data.players);
+      // If we don't have creatures yet, initialize them
+      if (creaturesRef.current.length === 0) {
+        console.log('Received lobby-update with no creatures, initializing...');
+        initializeCreatures(data.players);
+      } else {
+        // Otherwise just update existing creatures
+        updateCreatures(data.players);
+      }
     });
 
     socket.on('phase-changed', (data: { phase: string }) => {
@@ -225,8 +253,24 @@ export default function VisualizationPage() {
   }, [socket]);
 
   const initializeCreatures = (players: any[]) => {
+    console.log('initializeCreatures called with', players.length, 'players');
+    console.log('Current creatures:', creaturesRef.current.length);
+    console.log('isInitialized ref:', isInitialized.current);
+    
+    // Only block if we actually have creatures AND the flag is set
+    // This handles both: new sessions and page refreshes
+    if (creaturesRef.current.length > 0 || isInitialized.current) {
+      console.log('Creatures already exist or initialized, skipping...');
+      return;
+    }
+    
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.log('No canvas, skipping initialization');
+      return;
+    }
+    
+    console.log('Initializing creatures for the first time');
 
     const newCreatures: Creature[] = players
       .filter(p => !p.isHost && p.faction)
@@ -255,7 +299,7 @@ export default function VisualizationPage() {
         }
         
         return {
-          id: p.name, // Use name as ID since it stays constant on reconnect
+          id: p.name,
           name: p.name,
           faction: p.faction,
           x: spawnX,
@@ -266,75 +310,63 @@ export default function VisualizationPage() {
           image: img,
           spawnTime: Date.now() + spawnDelay,
           visible: false,
-          rotation: (Math.random() - 0.5) * (Math.PI / 2), // Start between -45° and +45° (-π/4 to +π/4)
-          rotationSpeed: (Math.random() - 0.5) * 0.04, // Rotation change speed
-          scale: 0 // Start at 0 for spawn animation
+          rotation: (Math.random() - 0.5) * (Math.PI / 6), // ±15 degrees
+          rotationSpeed: (Math.random() - 0.5) * 0.02, // Slower rotation
+          scale: 0,
+          isVillager: false
         };
       });
 
-    setCreatures(newCreatures);
+    // Add villagers (max 20, 2 per creature)
+    const villagers: Creature[] = [];
+    const villagerCount = Math.min(newCreatures.length * 2, 20);
+    for (let i = 0; i < villagerCount; i++) {
+      const gender = i % 2 === 0 ? 'male' : 'female';
+      const img = new Image();
+      img.src = `/villagers/${gender}.png`;
+      const spawnX = Math.random() * canvas.width;
+      const spawnY = Math.random() * canvas.height;
+      const spawnDelay = Math.random() * 5000 + 5000;
+      
+      villagers.push({
+        id: `villager-${gender}-${i}`,
+        name: `Bybo ${i + 1}`,
+        faction: 'Vampyr', // Dummy faction, won't be used for villagers
+        x: spawnX,
+        y: spawnY,
+        vx: (Math.random() - 0.5) * 2, // Slower movement for villagers
+        vy: (Math.random() - 0.5) * 2,
+        color: '#888888',
+        image: img,
+        spawnTime: Date.now() + spawnDelay,
+        visible: false,
+        rotation: (Math.random() - 0.5) * (Math.PI / 8), // ±11.25 degrees - even less for villagers
+        rotationSpeed: (Math.random() - 0.5) * 0.01, // Very slow rotation for villagers
+        scale: 0,
+        isVillager: true,
+        villagerGender: gender
+      });
+    }
+
+    setCreatures([...newCreatures, ...villagers]);
+    
+    isInitialized.current = true;
+    console.log('Creatures initialized:', newCreatures.length, 'monsters +', villagers.length, 'villagers');
   };
 
   const updateCreatures = (players: any[]) => {
     setCreatures(prev => {
       const updatedCreatures = [...prev];
       
-      // Add new creatures with delay (only if they don't exist at all)
-      // Use player name as identifier since it stays constant on reconnect
-      players.forEach(p => {
-        if (!p.isHost && p.faction && !updatedCreatures.find(c => c.name === p.name)) {
-          const config = FACTION_CONFIG[p.faction as Faction];
-          const canvas = canvasRef.current;
-          const spawnDelay = Math.random() * 5000 + 5000; // 5-10 seconds for testing
-          
-          // Load image
-          const img = new Image();
-          img.src = config.imagePath;
-          
-          // Spawn position avoiding control panel (top-left area)
-          let spawnX, spawnY;
-          const panelRight = 450;
-          const panelBottom = 600;
-          const canvasWidth = canvas?.width || 800;
-          const canvasHeight = canvas?.height || 600;
-          
-          // Spawn in safe area (outside panel)
-          if (Math.random() > 0.5) {
-            // Spawn to the right of panel
-            spawnX = panelRight + 50 + Math.random() * (canvasWidth - panelRight - 100);
-            spawnY = Math.random() * canvasHeight;
-          } else {
-            // Spawn below panel
-            spawnX = Math.random() * canvasWidth;
-            spawnY = panelBottom + 50 + Math.random() * (canvasHeight - panelBottom - 100);
-          }
-          
-          updatedCreatures.push({
-            id: p.name, // Use name as ID since it stays constant on reconnect
-            name: p.name,
-            faction: p.faction,
-            x: spawnX,
-            y: spawnY,
-            vx: (Math.random() - 0.5) * 3,
-            vy: (Math.random() - 0.5) * 3,
-            color: config.color,
-            image: img,
-            spawnTime: Date.now() + spawnDelay,
-            visible: false,
-            rotation: (Math.random() - 0.5) * (Math.PI / 2), // Start between -45° and +45°
-            rotationSpeed: (Math.random() - 0.5) * 0.04,
-            scale: 0
-          });
-        }
-      });
-
-      // Mark creatures for removal if they're not in the current players list OR disconnected
+      // Mark creatures for removal if they're not in the current players list OR disconnected (but not villagers)
       updatedCreatures.forEach(c => {
-        const player = players.find(p => p.name === c.name); // Match by name instead of id
+        if (c.isVillager) return; // Never remove villagers
+        
+        const player = players.find(p => p.name === c.name);
         if (!player || player.disconnected) {
           if (!c.markedForRemoval) {
             c.markedForRemoval = true;
-            c.removalTime = Date.now() + Math.random() * 5000 + 5000; // Remove after 5-10 seconds
+            c.removalTime = Date.now() + Math.random() * 5000 + 5000;
           }
         } else {
           // Player exists and is not disconnected - ensure removal flag is cleared (handles reconnect)
@@ -345,9 +377,9 @@ export default function VisualizationPage() {
         }
       });
 
-      // Remove creatures that have passed their removal time
+      // Remove creatures that have passed their removal time (but keep villagers)
       return updatedCreatures.filter(c => 
-        !c.markedForRemoval || (c.removalTime && Date.now() < c.removalTime)
+        c.isVillager || (!c.markedForRemoval || (c.removalTime && Date.now() < c.removalTime))
       );
     });
   };
@@ -364,8 +396,8 @@ export default function VisualizationPage() {
       // Clear canvas with transparency (background is handled by CSS)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw faction labels and total scores if in results grouping phase
-      if (showResults && resultsPhaseRef.current === 'grouping') {
+      // Draw faction labels and total scores if in results phase
+      if (showResults && (resultsPhaseRef.current === 'grouping' || resultsPhaseRef.current === 'podium')) {
         const factions: Faction[] = ['Vampyr', 'Varulv', 'Häxa', 'Monsterjägare', 'De Fördömda'];
         const spacing = canvas.width / (factions.length + 1);
         const yPosition = canvas.height * 0.4 - 100; // Above creatures
@@ -378,6 +410,9 @@ export default function VisualizationPage() {
             return creature?.faction === faction;
           });
           const totalScore = factionScores.reduce((sum, s) => sum + s.score, 0);
+
+          // Only show if faction has players
+          if (factionScores.length === 0) return;
 
           ctx.save();
           ctx.font = 'bold 32px Arial';
@@ -417,8 +452,8 @@ export default function VisualizationPage() {
         // Update rotation
         rotation += rotationSpeed;
         
-        // Clamp rotation between -45° and +45° (in radians: -π/4 to +π/4)
-        const maxRotation = Math.PI / 4; // 45 degrees
+        // Clamp rotation between ±20 degrees (in radians: -π/9 to +π/9)
+        const maxRotation = Math.PI / 9; // 20 degrees
         if (rotation > maxRotation || rotation < -maxRotation) {
           // Reverse rotation direction when hitting limits
           rotationSpeed = -rotationSpeed;
@@ -427,7 +462,7 @@ export default function VisualizationPage() {
         
         // Randomly change rotation direction occasionally (5% chance per frame)
         if (Math.random() < 0.05) {
-          rotationSpeed = (Math.random() - 0.5) * 0.04;
+          rotationSpeed = (Math.random() - 0.5) * 0.02; // Reduced from 0.04
         }
 
         // Results animation - move to target position
@@ -450,33 +485,183 @@ export default function VisualizationPage() {
             vx = 0;
             vy = 0;
           }
+        } else if (creature.isVillager) {
+          // Villagers fear all monsters except Monsterjägare
+          const fearForce = { x: 0, y: 0 };
+          const fearRadius = 150; // Distance at which villagers start to fear monsters
+          
+          creaturesRef.current.forEach(other => {
+            // Skip self, invisible creatures, other villagers, and Monsterjägare
+            if (other.id === creature.id || !other.visible || other.isVillager || other.faction === 'Monsterjägare') return;
+            
+            const dx = other.x - x;
+            const dy = other.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Run away from monsters (except Monsterjägare)
+            if (distance < fearRadius && distance > 0) {
+              const strength = (fearRadius - distance) / fearRadius;
+              fearForce.x -= (dx / distance) * strength * 1.2; // Stronger fear
+              fearForce.y -= (dy / distance) * strength * 1.2;
+            }
+          });
+          
+          const hasFear = Math.abs(fearForce.x) > 0.01 || Math.abs(fearForce.y) > 0.01;
+          
+          if (hasFear) {
+            // Apply fear force
+            vx += fearForce.x;
+            vy += fearForce.y;
+            
+            // Limit speed when fleeing
+            const maxSpeed = 3;
+            const currentSpeed = Math.sqrt(vx * vx + vy * vy);
+            if (currentSpeed > maxSpeed) {
+              vx = (vx / currentSpeed) * maxSpeed;
+              vy = (vy / currentSpeed) * maxSpeed;
+            }
+          } else {
+            // No fear - random movement
+            // Randomly change velocity occasionally (15% chance per frame)
+            if (Math.random() < 0.15) {
+              vx = (Math.random() - 0.5) * 2; // Slower than monsters
+              vy = (Math.random() - 0.5) * 2;
+            }
+          }
+
+          // Update position
+          x += vx;
+          y += vy;
         } else {
-          // Normal movement
-          // Randomly change velocity occasionally (10% chance per frame)
-          if (Math.random() < 0.1) {
-            vx = (Math.random() - 0.5) * 4; // Speed between -2 and 2
-            vy = (Math.random() - 0.5) * 4;
+          // Normal movement with avoidance, attraction and hunting behavior
+          
+          // Check for nearby creatures to avoid, be attracted to, or hunt
+          const avoidanceForce = { x: 0, y: 0 };
+          const attractionForce = { x: 0, y: 0 };
+          const huntingForce = { x: 0, y: 0 };
+          const avoidanceRadius = 150; // Distance at which to start avoiding
+          const attractionRadius = 200; // Distance at which to be attracted to allies
+          const huntingRadius = 250; // Distance at which to start hunting
+          const factionsToAvoid = FACTION_AVOIDANCE[creature.faction];
+          const factionsToHunt = FACTION_HUNTING[creature.faction];
+          
+          creaturesRef.current.forEach(other => {
+            // Skip self, invisible creatures, and villagers (monsters don't interact with villagers)
+            if (other.id === creature.id || !other.visible || other.isVillager) return;
+            
+            const dx = other.x - x; // Direction TO other creature
+            const dy = other.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Check if this is a faction we should avoid
+            if (factionsToAvoid && factionsToAvoid.includes(other.faction)) {
+              if (distance < avoidanceRadius && distance > 0) {
+                const strength = (avoidanceRadius - distance) / avoidanceRadius;
+                // Push away (negative dx/dy) - reduced strength
+                avoidanceForce.x -= (dx / distance) * strength * 0.8;
+                avoidanceForce.y -= (dy / distance) * strength * 0.8;
+              }
+            }
+            // Check if this is a faction we should hunt
+            else if (factionsToHunt && factionsToHunt.includes(other.faction)) {
+              if (distance < huntingRadius && distance > 0) {
+                const strength = (huntingRadius - distance) / huntingRadius;
+                // Pull towards prey (positive dx/dy)
+                huntingForce.x += (dx / distance) * strength * 0.6;
+                huntingForce.y += (dy / distance) * strength * 0.6;
+              }
+            }
+            // Check if this is same faction (attraction) - but not self
+            else if (other.faction === creature.faction && other.id !== creature.id) {
+              if (distance < attractionRadius && distance > 50) { // Don't get too close (min 50px)
+                const strength = (attractionRadius - distance) / attractionRadius;
+                // Pull towards (positive dx/dy) - reduced strength
+                attractionForce.x += (dx / distance) * strength * 0.3;
+                attractionForce.y += (dy / distance) * strength * 0.3;
+              }
+            }
+          });
+          
+          // Check if there's any force to apply
+          const hasThreat = Math.abs(avoidanceForce.x) > 0.01 || Math.abs(avoidanceForce.y) > 0.01;
+          const hasAllies = Math.abs(attractionForce.x) > 0.01 || Math.abs(attractionForce.y) > 0.01;
+          const hasPrey = Math.abs(huntingForce.x) > 0.01 || Math.abs(huntingForce.y) > 0.01;
+          
+          if (hasThreat || hasAllies || hasPrey) {
+            // Apply forces to velocity (avoidance > hunting > attraction in priority)
+            vx += avoidanceForce.x + huntingForce.x + attractionForce.x;
+            vy += avoidanceForce.y + huntingForce.y + attractionForce.y;
+            
+            // Limit speed (hunters can be slightly faster)
+            const maxSpeed = hasPrey ? 3.5 : 3;
+            const currentSpeed = Math.sqrt(vx * vx + vy * vy);
+            if (currentSpeed > maxSpeed) {
+              vx = (vx / currentSpeed) * maxSpeed;
+              vy = (vy / currentSpeed) * maxSpeed;
+            }
+          } else {
+            // No threat, allies, or prey - normal random movement
+            // Randomly change velocity occasionally (10% chance per frame)
+            if (Math.random() < 0.1) {
+              vx = (Math.random() - 0.5) * 3; // Reduced from 4 to 3
+              vy = (Math.random() - 0.5) * 3;
+            }
           }
 
           // Update position
           x += vx;
           y += vy;
 
+          // Creature-to-creature collision detection
+          const creatureRadius = 30; // Half of 60px character size
+          creaturesRef.current.forEach(other => {
+            if (other.id === creature.id || !other.visible) return;
+            
+            const dx = x - other.x;
+            const dy = y - other.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const minDistance = creatureRadius * 2; // Two radii
+            
+            // If creatures overlap, push them apart
+            if (distance < minDistance && distance > 0) {
+              const overlap = minDistance - distance;
+              const pushX = (dx / distance) * (overlap / 2);
+              const pushY = (dy / distance) * (overlap / 2);
+              
+              // Push current creature away
+              x += pushX;
+              y += pushY;
+              
+              // Also bounce the velocity
+              vx += pushX * 0.5;
+              vy += pushY * 0.5;
+            }
+          });
+
           // Control panel collision area (top-left corner)
           const panelLeft = 0;
           const panelTop = 0;
           const panelRight = 450;
           const panelBottom = 600;
-          const creatureRadius = 25;
 
           // Check collision with control panel
           if (x - creatureRadius < panelRight && x + creatureRadius > panelLeft &&
               y - creatureRadius < panelBottom && y + creatureRadius > panelTop) {
-            if (x < panelRight && vx < 0) vx = -vx;
-            if (y < panelBottom && vy < 0) vy = -vy;
             
-            if (x < panelRight) x = panelRight + creatureRadius;
-            if (y < panelBottom) y = panelBottom + creatureRadius;
+            // Push creature completely outside the panel area
+            // Calculate which edge is closest
+            const distToRight = Math.abs(x - panelRight);
+            const distToBottom = Math.abs(y - panelBottom);
+            
+            if (distToRight < distToBottom) {
+              // Push to the right
+              x = panelRight + creatureRadius;
+              vx = Math.abs(vx); // Ensure moving right
+            } else {
+              // Push down
+              y = panelBottom + creatureRadius;
+              vy = Math.abs(vy); // Ensure moving down
+            }
           }
 
           // Bounce off walls
@@ -488,15 +673,21 @@ export default function VisualizationPage() {
           y = Math.max(20, Math.min(canvas.height - 20, y));
         }
 
-        // Draw creature shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.beginPath();
-        ctx.arc(x + 2, y + 2, 25 * scale, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw isometric shadow (ellipse on ground)
+        if (creature.image && creature.image.complete) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+          ctx.translate(x, y + 36); // Position shadow below creature (adjusted for larger size)
+          ctx.scale(1, 0.4); // Compress vertically for isometric perspective
+          ctx.beginPath();
+          ctx.arc(0, 0, 24 * scale, 0, Math.PI * 2); // 20% larger shadow (20 * 1.2 = 24)
+          ctx.fill();
+          ctx.restore();
+        }
 
         // Draw image if loaded (fully opaque, with rotation and scale)
         if (creature.image && creature.image.complete) {
-          const size = 50 * scale; // Image size with scale
+          const size = 60 * scale; // Image size with scale (50 * 1.2 = 60, 20% larger)
           
           ctx.save(); // Save current context state
           ctx.translate(x, y); // Move to creature position
@@ -763,6 +954,20 @@ export default function VisualizationPage() {
             <div className="text-sm">
               <span className="text-gray-400">Varelser:</span> {creatures.length}
             </div>
+            
+            {/* Reset button */}
+            <button
+              onClick={() => {
+                if (confirm('Vill du verkligen återställa visualiseringen? Detta kommer att skapa om alla varelser.')) {
+                  setCreatures([]);
+                  isInitialized.current = false;
+                  window.location.reload();
+                }
+              }}
+              className="w-full mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors"
+            >
+              Återställ Visualisering
+            </button>
             
             {/* Legend */}
             <div className="mt-4 pt-4 border-t border-gray-600">
