@@ -107,8 +107,16 @@ app.prepare().then(() => {
       }
 
       if (existingPlayer) {
-        // Reconnecting player
+        // Check if the existing player is currently connected (not this socket trying to join)
         const { oldId, player } = existingPlayer;
+        
+        if (!player.disconnected && oldId !== socket.id) {
+          // Someone else is already using this name and is connected
+          callback({ success: false, error: 'Detta namn används redan av en annan spelare' });
+          return;
+        }
+        
+        // Reconnecting player (was disconnected or refreshing)
         game.players.delete(oldId);
         
         const playerId = socket.id;
@@ -434,18 +442,23 @@ app.prepare().then(() => {
     const assignments = new Map();
     const factions = ['Vampyr', 'Varulv', 'Häxa', 'Monsterjägare', 'De Fördömda'];
     
-    // Always use all 5 factions for even distribution
-    const factionsToUse = factions;
+    // Shuffle the factions array itself first
+    const shuffledFactions = [...factions];
+    for (let i = shuffledFactions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledFactions[i], shuffledFactions[j]] = [shuffledFactions[j], shuffledFactions[i]];
+    }
+    
     const playerCount = players.length;
     
     // Calculate base number of players per faction
-    const basePerFaction = Math.floor(playerCount / factionsToUse.length);
-    const remainder = playerCount % factionsToUse.length;
+    const basePerFaction = Math.floor(playerCount / shuffledFactions.length);
+    const remainder = playerCount % shuffledFactions.length;
     
-    // Build faction pool with even distribution
+    // Build faction pool with even distribution (using shuffled faction order)
     const factionPool = [];
     
-    factionsToUse.forEach((faction, index) => {
+    shuffledFactions.forEach((faction, index) => {
       // First 'remainder' factions get one extra player
       const count = basePerFaction + (index < remainder ? 1 : 0);
       for (let i = 0; i < count; i++) {
@@ -453,15 +466,16 @@ app.prepare().then(() => {
       }
     });
     
-    // Fisher-Yates shuffle for true randomization
+    // Fisher-Yates shuffle the pool again for extra randomness
     for (let i = factionPool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [factionPool[i], factionPool[j]] = [factionPool[j], factionPool[i]];
     }
     
-    // Assign shuffled factions to players
+    // Assign factions to players in order
     players.forEach((player, index) => {
       assignments.set(player.id, factionPool[index]);
+      console.log(`Assigned ${factionPool[index]} to player ${player.name} (index ${index})`);
     });
     
     return assignments;

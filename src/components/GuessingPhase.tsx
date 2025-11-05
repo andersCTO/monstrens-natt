@@ -325,34 +325,26 @@ export default function GuessingPhase() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[0, 1].map((index) => (
-                    <div key={index} className="space-y-2">
-                      <select
-                        value=""
-                        onChange={(e) => handleGuessChange(factionData.name, index, e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-white/20 text-white border-2 border-white/30 focus:border-white outline-none text-lg"
-                      >
-                        <option value="" className="text-black">
-                          Välj spelare {index + 1}
+                    <select
+                      key={index}
+                      value={guesses[factionData.name][index]}
+                      onChange={(e) => handleGuessChange(factionData.name, index, e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg bg-white/20 text-white border-2 border-white/30 focus:border-white outline-none text-lg"
+                    >
+                      <option value="" className="text-black">
+                        Välj spelare {index + 1}
+                      </option>
+                      {availablePlayers.map((player) => (
+                        <option
+                          key={player.id}
+                          value={player.name}
+                          className="text-black"
+                          disabled={guesses[factionData.name].includes(player.name)}
+                        >
+                          {player.name}
                         </option>
-                        {availablePlayers.map((player) => (
-                          <option
-                            key={player.id}
-                            value={player.name}
-                            className="text-black"
-                            disabled={guesses[factionData.name].includes(player.name)}
-                          >
-                            {player.name}
-                          </option>
-                        ))}
-                      </select>
-                      {guesses[factionData.name][index] && (
-                        <div className="bg-green-600/30 border-2 border-green-400 rounded-lg px-4 py-2">
-                          <p className="text-white text-sm font-semibold">
-                            Nuvarande gissning: {guesses[factionData.name][index]}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                      ))}
+                    </select>
                   ))}
                 </div>
               </div>

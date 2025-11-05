@@ -18,6 +18,13 @@ interface Creature {
   visible: boolean;
   markedForRemoval?: boolean; // Player disconnected, waiting to remove
   removalTime?: number; // When to actually remove
+  rotation: number; // Current rotation in radians
+  rotationSpeed: number; // How fast it rotates
+  scale: number; // Current scale (for spawn animation)
+  targetX?: number; // Target position for results animation
+  targetY?: number;
+  score?: number; // Player's score
+  isMovingToTarget?: boolean; // Whether creature is moving to target position
 }
 
 interface ActiveGame {
@@ -50,6 +57,9 @@ export default function VisualizationPage() {
   const animationFrameRef = useRef<number | null>(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const currentAudioRef = useRef<1 | 2>(1);
+  const [scores, setScores] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const resultsPhaseRef = useRef<'grouping' | 'podium' | 'done'>('grouping');
 
   // Crossfade music loop
   useEffect(() => {
@@ -200,9 +210,17 @@ export default function VisualizationPage() {
       setGamePhase(data.phase);
     });
 
+    socket.on('results', (data: { scores: any[] }) => {
+      setScores(data.scores);
+      setShowResults(true);
+      setGamePhase('results');
+      resultsPhaseRef.current = 'grouping';
+    });
+
     return () => {
       socket.off('lobby-update');
       socket.off('phase-changed');
+      socket.off('results');
     };
   }, [socket]);
 
@@ -247,7 +265,10 @@ export default function VisualizationPage() {
           color: config.color,
           image: img,
           spawnTime: Date.now() + spawnDelay,
-          visible: false
+          visible: false,
+          rotation: (Math.random() - 0.5) * (Math.PI / 2), // Start between -45° and +45° (-π/4 to +π/4)
+          rotationSpeed: (Math.random() - 0.5) * 0.04, // Rotation change speed
+          scale: 0 // Start at 0 for spawn animation
         };
       });
 
@@ -299,7 +320,10 @@ export default function VisualizationPage() {
             color: config.color,
             image: img,
             spawnTime: Date.now() + spawnDelay,
-            visible: false
+            visible: false,
+            rotation: (Math.random() - 0.5) * (Math.PI / 2), // Start between -45° and +45°
+            rotationSpeed: (Math.random() - 0.5) * 0.04,
+            scale: 0
           });
         }
       });
@@ -340,9 +364,40 @@ export default function VisualizationPage() {
       // Clear canvas with transparency (background is handled by CSS)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Draw faction labels and total scores if in results grouping phase
+      if (showResults && resultsPhaseRef.current === 'grouping') {
+        const factions: Faction[] = ['Vampyr', 'Varulv', 'Häxa', 'Monsterjägare', 'De Fördömda'];
+        const spacing = canvas.width / (factions.length + 1);
+        const yPosition = canvas.height * 0.4 - 100; // Above creatures
+
+        factions.forEach((faction, index) => {
+          const x = spacing * (index + 1);
+          const factionScores = scores.filter(s => {
+            // Find creature with this name to get their faction
+            const creature = creaturesRef.current.find(c => c.name === s.playerName);
+            return creature?.faction === faction;
+          });
+          const totalScore = factionScores.reduce((sum, s) => sum + s.score, 0);
+
+          ctx.save();
+          ctx.font = 'bold 32px Arial';
+          ctx.textAlign = 'center';
+          
+          // Faction name
+          ctx.fillStyle = FACTION_CONFIG[faction].color;
+          ctx.fillText(faction, x, yPosition);
+          
+          // Total score
+          ctx.font = 'bold 48px Arial';
+          ctx.fillStyle = totalScore > 0 ? '#22c55e' : totalScore < 0 ? '#ef4444' : '#eab308';
+          ctx.fillText(totalScore.toString(), x, yPosition + 50);
+          ctx.restore();
+        });
+      }
+
       // Update and draw creatures
       creaturesRef.current = creaturesRef.current.map(creature => {
-        let { x, y, vx, vy, visible, spawnTime } = creature;
+        let { x, y, vx, vy, visible, spawnTime, rotation, rotationSpeed, scale, targetX, targetY, isMovingToTarget } = creature;
 
         // Check if it's time to spawn
         if (!visible && Date.now() >= spawnTime) {
@@ -354,58 +409,123 @@ export default function VisualizationPage() {
           return { ...creature, visible };
         }
 
-        // Randomly change velocity occasionally (10% chance per frame)
-        if (Math.random() < 0.1) {
-          vx = (Math.random() - 0.5) * 4; // Speed between -2 and 2
-          vy = (Math.random() - 0.5) * 4;
+        // Spawn animation - scale from 0 to 1
+        if (scale < 1) {
+          scale = Math.min(1, scale + 0.05); // Gradually scale up
         }
 
-        // Update position
-        x += vx;
-        y += vy;
+        // Update rotation
+        rotation += rotationSpeed;
+        
+        // Clamp rotation between -45° and +45° (in radians: -π/4 to +π/4)
+        const maxRotation = Math.PI / 4; // 45 degrees
+        if (rotation > maxRotation || rotation < -maxRotation) {
+          // Reverse rotation direction when hitting limits
+          rotationSpeed = -rotationSpeed;
+          rotation = Math.max(-maxRotation, Math.min(maxRotation, rotation));
+        }
+        
+        // Randomly change rotation direction occasionally (5% chance per frame)
+        if (Math.random() < 0.05) {
+          rotationSpeed = (Math.random() - 0.5) * 0.04;
+        }
 
-        // Control panel collision area (top-left corner)
-        // Panel is ~400px wide and varies in height, add padding
-        const panelLeft = 0;
-        const panelTop = 0;
-        const panelRight = 450; // max-w-sm + padding
-        const panelBottom = 600; // generous estimate for panel height
-        const creatureRadius = 25;
-
-        // Check collision with control panel
-        if (x - creatureRadius < panelRight && x + creatureRadius > panelLeft &&
-            y - creatureRadius < panelBottom && y + creatureRadius > panelTop) {
-          // Creature is colliding with panel, bounce away
-          if (x < panelRight && vx < 0) vx = -vx; // Coming from right, bounce right
-          if (y < panelBottom && vy < 0) vy = -vy; // Coming from bottom, bounce down
+        // Results animation - move to target position
+        if (isMovingToTarget && targetX !== undefined && targetY !== undefined) {
+          const dx = targetX - x;
+          const dy = targetY - y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
           
-          // Push creature outside panel area
-          if (x < panelRight) x = panelRight + creatureRadius;
-          if (y < panelBottom) y = panelBottom + creatureRadius;
+          if (distance > 5) {
+            // Move towards target
+            const speed = 3;
+            vx = (dx / distance) * speed;
+            vy = (dy / distance) * speed;
+            x += vx;
+            y += vy;
+          } else {
+            // Reached target
+            x = targetX;
+            y = targetY;
+            vx = 0;
+            vy = 0;
+          }
+        } else {
+          // Normal movement
+          // Randomly change velocity occasionally (10% chance per frame)
+          if (Math.random() < 0.1) {
+            vx = (Math.random() - 0.5) * 4; // Speed between -2 and 2
+            vy = (Math.random() - 0.5) * 4;
+          }
+
+          // Update position
+          x += vx;
+          y += vy;
+
+          // Control panel collision area (top-left corner)
+          const panelLeft = 0;
+          const panelTop = 0;
+          const panelRight = 450;
+          const panelBottom = 600;
+          const creatureRadius = 25;
+
+          // Check collision with control panel
+          if (x - creatureRadius < panelRight && x + creatureRadius > panelLeft &&
+              y - creatureRadius < panelBottom && y + creatureRadius > panelTop) {
+            if (x < panelRight && vx < 0) vx = -vx;
+            if (y < panelBottom && vy < 0) vy = -vy;
+            
+            if (x < panelRight) x = panelRight + creatureRadius;
+            if (y < panelBottom) y = panelBottom + creatureRadius;
+          }
+
+          // Bounce off walls
+          if (x <= 20 || x >= canvas.width - 20) vx = -vx;
+          if (y <= 20 || y >= canvas.height - 20) vy = -vy;
+
+          // Ensure within bounds
+          x = Math.max(20, Math.min(canvas.width - 20, x));
+          y = Math.max(20, Math.min(canvas.height - 20, y));
         }
-
-        // Bounce off walls
-        if (x <= 20 || x >= canvas.width - 20) vx = -vx;
-        if (y <= 20 || y >= canvas.height - 20) vy = -vy;
-
-        // Ensure within bounds
-        x = Math.max(20, Math.min(canvas.width - 20, x));
-        y = Math.max(20, Math.min(canvas.height - 20, y));
 
         // Draw creature shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.arc(x + 2, y + 2, 25, 0, Math.PI * 2);
+        ctx.arc(x + 2, y + 2, 25 * scale, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw image if loaded (fully opaque)
+        // Draw image if loaded (fully opaque, with rotation and scale)
         if (creature.image && creature.image.complete) {
-          const size = 50; // Image size
+          const size = 50 * scale; // Image size with scale
+          
+          ctx.save(); // Save current context state
+          ctx.translate(x, y); // Move to creature position
+          ctx.rotate(rotation); // Rotate
           ctx.globalAlpha = 1.0; // Ensure full opacity
-          ctx.drawImage(creature.image, x - size/2, y - size/2, size, size);
+          ctx.drawImage(creature.image, -size/2, -size/2, size, size);
+          ctx.restore(); // Restore context state
         }
 
-        return { ...creature, x, y, vx, vy, visible };
+        // Draw score if in results phase
+        if (showResults && creature.score !== undefined) {
+          ctx.save();
+          ctx.font = 'bold 24px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          
+          // Background circle for score
+          ctx.fillStyle = creature.score > 0 ? '#22c55e' : creature.score < 0 ? '#ef4444' : '#eab308';
+          ctx.beginPath();
+          ctx.arc(x, y - 40, 18, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Score text
+          ctx.fillStyle = 'white';
+          ctx.fillText(creature.score.toString(), x, y - 40);
+          ctx.restore();
+        }
+
+        return { ...creature, x, y, vx, vy, visible, rotation, rotationSpeed, scale, targetX, targetY, isMovingToTarget };
       });
 
       animationFrameRef.current = requestAnimationFrame(animate);
@@ -419,6 +539,107 @@ export default function VisualizationPage() {
       }
     };
   }, []);
+
+  // Handle results animation
+  useEffect(() => {
+    if (!showResults || !scores.length) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Phase 1: Group creatures by faction
+    if (resultsPhaseRef.current === 'grouping') {
+      setTimeout(() => {
+        setCreatures(prev => {
+          const factions: Faction[] = ['Vampyr', 'Varulv', 'Häxa', 'Monsterjägare', 'De Fördömda'];
+          const factionGroups = new Map<Faction, typeof prev>();
+          
+          // Group creatures by faction
+          factions.forEach(faction => {
+            factionGroups.set(faction, prev.filter(c => c.faction === faction));
+          });
+
+          // Calculate faction positions (spread across canvas)
+          const spacing = canvas.width / (factions.length + 1);
+          const yPosition = canvas.height * 0.4; // 40% down from top
+
+          return prev.map(creature => {
+            const factionIndex = factions.indexOf(creature.faction);
+            const factionCreatures = factionGroups.get(creature.faction) || [];
+            const creatureIndexInFaction = factionCreatures.findIndex(c => c.id === creature.id);
+            
+            // Position in a small cluster
+            const baseX = spacing * (factionIndex + 1);
+            const offsetX = (creatureIndexInFaction % 3 - 1) * 60; // 3 per row
+            const offsetY = Math.floor(creatureIndexInFaction / 3) * 70;
+
+            // Get score for this creature
+            const scoreData = scores.find(s => s.playerName === creature.name);
+            const score = scoreData?.score || 0;
+
+            return {
+              ...creature,
+              targetX: baseX + offsetX,
+              targetY: yPosition + offsetY,
+              isMovingToTarget: true,
+              score
+            };
+          });
+        });
+
+        // After 4 seconds, move to podium phase
+        setTimeout(() => {
+          resultsPhaseRef.current = 'podium';
+        }, 4000);
+      }, 500);
+    }
+
+    // Phase 2: Move top 3 to podium
+    if (resultsPhaseRef.current === 'podium') {
+      setTimeout(() => {
+        const sortedScores = [...scores].sort((a, b) => b.score - a.score);
+        const top3 = sortedScores.slice(0, 3);
+
+        // Podium positions (center of canvas)
+        const centerX = canvas.width / 2;
+        const podiumY = canvas.height * 0.7;
+
+        setCreatures(prev => {
+          return prev.map(creature => {
+            const placement = top3.findIndex(s => s.playerName === creature.name);
+            
+            if (placement !== -1) {
+              // This creature is in top 3
+              let targetX = centerX;
+              let targetY = podiumY;
+
+              if (placement === 0) { // 1st place (center, highest)
+                targetX = centerX;
+                targetY = podiumY - 100;
+              } else if (placement === 1) { // 2nd place (left)
+                targetX = centerX - 120;
+                targetY = podiumY - 60;
+              } else if (placement === 2) { // 3rd place (right)
+                targetX = centerX + 120;
+                targetY = podiumY - 20;
+              }
+
+              return {
+                ...creature,
+                targetX,
+                targetY,
+                isMovingToTarget: true
+              };
+            }
+
+            return creature;
+          });
+        });
+
+        resultsPhaseRef.current = 'done';
+      }, 500);
+    }
+  }, [showResults, scores]);
 
   // Resize canvas
   useEffect(() => {
