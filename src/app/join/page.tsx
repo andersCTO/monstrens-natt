@@ -319,15 +319,15 @@ export default function JoinGame() {
               <div className="relative mb-8">
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 blur-3xl opacity-30 animate-pulse"></div>
                 <div className="relative bg-white/10 backdrop-blur-md border-4 border-purple-400 rounded-2xl p-8">
-                  <div className="flex items-center justify-center gap-6 mb-6">
+                  <div className="flex flex-col items-center justify-center gap-4 mb-6">
                     {factionData.symbol && (
                       <img 
                         src={factionData.symbol} 
                         alt={factionData.name}
-                        className="w-24 h-24 object-contain"
+                        className="w-32 h-32 object-contain"
                       />
                     )}
-                    <h1 className="text-6xl font-bold text-white drop-shadow-lg">
+                    <h1 className="text-6xl font-bold text-white drop-shadow-lg text-center">
                       {factionData.name}
                     </h1>
                   </div>

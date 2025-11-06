@@ -47,7 +47,7 @@ const FACTION_CONFIG: Record<Faction, { color: string; imagePath: string }> = {
 
 // Available backgrounds
 const BACKGROUNDS = [
-  { name: 'Övergivet Kyrkogård', path: '/backgrounds/Abondoned Graveyard.png' },
+  { name: 'Övergivet Kyrkogård', path: '/backgrounds/abondoned-graveyard.png' },
   { name: 'Förbannande Skog', path: '/backgrounds/cursed-forest-edge.png' },
   { name: 'Hemsökt Bytorg', path: '/backgrounds/haunted-village-square.png' },
   { name: 'Stockholm', path: '/backgrounds/Stockholm.png' },
