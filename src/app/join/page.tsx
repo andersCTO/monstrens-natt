@@ -122,9 +122,14 @@ export default function JoinGame() {
           </h1>
 
           <div className="bg-white/5 backdrop-blur-md rounded-lg p-8 space-y-6 relative z-10 border border-white/10">
-            <p className="text-purple-200 text-lg mb-6">
-              Välkommen! Vad heter du?
-            </p>
+            <div className="space-y-2">
+              <p className="text-purple-200 text-lg mb-6">
+                Välkommen! Vad heter du?
+              </p>
+              <p className="text-purple-300 text-sm italic">
+                ⚠️ Viktigt: Skriv ditt riktiga för- och efternamn
+              </p>
+            </div>
 
             <div className="space-y-4">
               <div>
@@ -160,13 +165,6 @@ export default function JoinGame() {
               Fortsätt
             </button>
           </div>
-
-          <button
-            onClick={() => router.push('/')}
-            className="text-purple-300 hover:text-purple-200 transition-colors relative z-10"
-          >
-            ← Tillbaka till start
-          </button>
         </div>
       </div>
     );

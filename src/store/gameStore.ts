@@ -65,8 +65,9 @@ export const useGameStore = create<GameState>()(
       hostViewPlayers: [],
 
       connectSocket: () => {
+        // Use same origin as the web page (works on both localhost and production)
         const socketUrl = typeof window !== 'undefined' 
-          ? `${window.location.protocol}//${window.location.hostname}:3000`
+          ? window.location.origin
           : 'http://localhost:3000';
         
         const socket = io(socketUrl, {
