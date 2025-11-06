@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import StartScreen from '@/components/StartScreen';
 import Lobby from '@/components/Lobby';
-import MingelPhase from '@/components/MingelPhase';
 import GuessingPhase from '@/components/GuessingPhase';
 import ResultsPhase from '@/components/ResultsPhase';
 
@@ -29,7 +28,6 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-black">
       {!gameCode && <StartScreen />}
       {gameCode && phase === 'lobby' && <Lobby />}
-      {phase === 'mingel' && <MingelPhase />}
       {phase === 'guessing' && <GuessingPhase />}
       {phase === 'results' && <ResultsPhase />}
     </div>
