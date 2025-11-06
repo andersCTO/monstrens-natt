@@ -29,6 +29,7 @@ interface GameState {
   connectionError: string | null;
   activeGames: ActiveGame[];
   hostViewPlayers: { id: string; name: string; faction: Faction }[];
+  testMode: boolean;
   
   connectSocket: () => void;
   createGame: (playerName: string, gameName: string) => Promise<void>;
@@ -63,6 +64,7 @@ export const useGameStore = create<GameState>()(
       connectionError: null,
       activeGames: [],
       hostViewPlayers: [],
+      testMode: false,
 
       connectSocket: () => {
         // Use same origin as the web page (works on both localhost and production)
@@ -131,10 +133,11 @@ export const useGameStore = create<GameState>()(
           set({ isConnected: true, connectionError: null });
         });
         
-        socket.on('lobby-update', (data: { players: Player[]; hostId: string }) => {
+        socket.on('lobby-update', (data: { players: Player[]; hostId: string; testMode?: boolean }) => {
           set({ 
             players: data.players,
-            isHost: data.hostId === get().playerId
+            isHost: data.hostId === get().playerId,
+            testMode: data.testMode || false
           });
         });
 
@@ -197,13 +200,19 @@ export const useGameStore = create<GameState>()(
         const socket = get().socket;
         if (!socket) return;
 
+        // Get test mode from localStorage
+        const testMode = typeof window !== 'undefined' 
+          ? localStorage.getItem('testMode') === 'true'
+          : false;
+
         return new Promise<void>((resolve) => {
-          socket.emit('create-game', { playerName, gameName }, (data: { code: string; playerId: string }) => {
+          socket.emit('create-game', { playerName, gameName, testMode }, (data: { code: string; playerId: string }) => {
             set({ 
               gameCode: data.code,
               playerId: data.playerId,
               playerName,
-              isHost: true
+              isHost: true,
+              testMode
             });
             resolve();
           });

@@ -1,5 +1,51 @@
 import { Faction, FactionData } from '@/types/game';
 
+// Helper function to check if test mode is active
+export const isTestMode = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('testMode') === 'true';
+};
+
+// Lorem Ipsum replacements for test mode
+const LOREM_TELLING_TALES = [
+  'Lorem ipsum dolor sit amet',
+  'Consectetur adipiscing elit',
+  'Sed do eiusmod tempor',
+  'Incididunt ut labore',
+  'Dolore magna aliqua',
+  'Ut enim ad minim',
+  'Veniam quis nostrud',
+  'Exercitation ullamco laboris',
+  'Nisi ut aliquip ex',
+  'Commodo consequat duis'
+];
+
+const LOREM_FORBIDDEN_WORDS = [
+  'Lorem',
+  'Ipsum',
+  'Dolor',
+  'Amet',
+  'Consectetur',
+  'Adipiscing',
+  'Tempor',
+  'Labore',
+  'Magna',
+  'Minim'
+];
+
+const LOREM_PHRASES = [
+  'Lorem ipsum dolor...',
+  'Sit amet consectetur',
+  'Adipiscing elit sed',
+  'Eiusmod tempor inc',
+  'Ut labore et dolore',
+  'Magna aliqua enim',
+  'Ad minim veniam',
+  'Quis nostrud exerc',
+  'Ullamco laboris nisi',
+  'Aliquip ex ea commodo'
+];
+
 export const FACTIONS: Record<Faction, FactionData> = {
   'Vampyr': {
     name: 'Vampyr',
@@ -228,6 +274,18 @@ export function getFactionByName(name: Faction): FactionData {
 
 export function getRandomizedFactionData(name: Faction): FactionData {
   const faction = FACTIONS[name];
+  
+  // Use Lorem Ipsum in test mode
+  if (isTestMode()) {
+    return {
+      ...faction,
+      tellingTales: shuffleArray(LOREM_TELLING_TALES).slice(0, 3),
+      forbiddenWords: shuffleArray(LOREM_FORBIDDEN_WORDS).slice(0, 5),
+      favoritePhrases: shuffleArray(LOREM_PHRASES).slice(0, 3)
+    };
+  }
+  
+  // Use real content in normal mode
   return {
     ...faction,
     tellingTales: shuffleArray(faction.tellingTales).slice(0, 3),

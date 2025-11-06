@@ -218,9 +218,22 @@ export default function VisualizationPage() {
   // Join game as observer
   const joinGame = (code?: string) => {
     const targetCode = code || gameCode;
-    if (!socket || !targetCode) return;
+    console.log('joinGame called:', { socket: !!socket, targetCode, isConnected });
+    
+    if (!socket) {
+      console.error('No socket available');
+      alert('Socket-anslutningen är inte klar. Vänta ett ögonblick och försök igen.');
+      return;
+    }
+    
+    if (!targetCode) {
+      console.error('No target code');
+      return;
+    }
 
+    console.log('Emitting join-visualization for code:', targetCode);
     socket.emit('join-visualization', targetCode, (response: { success: boolean; error?: string; players?: any[] }) => {
+      console.log('join-visualization response:', response);
       if (response.success && response.players) {
         setGameCode(targetCode);
         initializeCreatures(response.players);

@@ -30,7 +30,18 @@ app.prepare().then(() => {
   });
 
   // Import and initialize socket handlers
-  const games = new Map();  io.on('connection', (socket) => {
+  const games = new Map();
+
+  // Helper function to broadcast lobby update with test mode
+  const broadcastLobbyUpdate = (code, game) => {
+    io.to(code).emit('lobby-update', {
+      players: Array.from(game.players.values()),
+      hostId: game.hostId,
+      testMode: game.testMode || false
+    });
+  };
+
+  io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
 
     // Get list of active games
@@ -56,7 +67,7 @@ app.prepare().then(() => {
     });
 
     socket.on('create-game', (data, callback) => {
-      const { playerName, gameName } = data;
+      const { playerName, gameName, testMode } = data;
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const playerId = socket.id;
       
@@ -72,7 +83,8 @@ app.prepare().then(() => {
         }]]),
         phase: 'lobby',
         mingelDuration: 45,
-        submissions: []
+        submissions: [],
+        testMode: testMode || false
       };      games.set(code, game);
       socket.join(code);
       console.log(`Game created: ${code} "${gameName}" by ${playerName}`);
@@ -82,10 +94,7 @@ app.prepare().then(() => {
       // Broadcast updated game list to all clients
       broadcastActiveGames();
       
-      io.to(code).emit('lobby-update', {
-        players: Array.from(game.players.values()),
-        hostId: game.hostId
-      });
+      broadcastLobbyUpdate(code, game);
     });
 
     socket.on('join-game', (data, callback) => {
@@ -135,9 +144,7 @@ app.prepare().then(() => {
         callback({ success: true, playerId });
         
         // Broadcast lobby update to all players (including visualizations)
-        io.to(code).emit('lobby-update', {
-          players: Array.from(game.players.values())
-        });
+        broadcastLobbyUpdate(code, game);
         
         // Send them their current game state
         if (player.faction) {
@@ -203,10 +210,7 @@ app.prepare().then(() => {
       // Broadcast updated game list
       broadcastActiveGames();
       
-      io.to(code).emit('lobby-update', {
-        players: Array.from(game.players.values()),
-        hostId: game.hostId
-      });
+      broadcastLobbyUpdate(code, game);
     });
 
     socket.on('join-visualization', (code, callback) => {
@@ -256,16 +260,10 @@ app.prepare().then(() => {
         newHost.isHost = true;
         console.log(`New host assigned in game ${code}: ${newHost.name}`);
         
-        io.to(code).emit('lobby-update', {
-          players: Array.from(game.players.values()),
-          hostId: game.hostId
-        });
+        broadcastLobbyUpdate(code, game);
       } else {
         // Regular player left
-        io.to(code).emit('lobby-update', {
-          players: Array.from(game.players.values()),
-          hostId: game.hostId
-        });
+        broadcastLobbyUpdate(code, game);
       }
       
       // Broadcast updated game list
@@ -436,10 +434,7 @@ app.prepare().then(() => {
           }
 
           // Notify other players
-          io.to(code).emit('lobby-update', {
-            players: Array.from(game.players.values()),
-            hostId: game.hostId
-          });
+          broadcastLobbyUpdate(code, game);
 
           // Broadcast updated games list
           broadcastActiveGames();

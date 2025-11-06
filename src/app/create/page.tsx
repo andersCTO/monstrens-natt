@@ -8,6 +8,7 @@ import GuessingPhase from '@/components/GuessingPhase';
 import ResultsPhase from '@/components/ResultsPhase';
 import ConnectionStatus from '@/components/ConnectionStatus';
 import DisconnectionWarning from '@/components/DisconnectionWarning';
+import TestModeToggle from '@/components/TestModeToggle';
 
 export default function CreateGame() {
   const [gameName, setGameName] = useState('');
@@ -51,6 +52,7 @@ export default function CreateGame() {
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-black">
       <ConnectionStatus />
       <DisconnectionWarning />
+      <TestModeToggle />
       
       {!gameCode && (
         <div className="min-h-screen flex items-center justify-center p-4">

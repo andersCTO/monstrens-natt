@@ -8,6 +8,7 @@ import GuessingPhase from '@/components/GuessingPhase';
 import ResultsPhase from '@/components/ResultsPhase';
 import ConnectionStatus from '@/components/ConnectionStatus';
 import DisconnectionWarning from '@/components/DisconnectionWarning';
+import TestModeToggle from '@/components/TestModeToggle';
 
 // UX Flow Steps
 type FlowStep = 
@@ -30,7 +31,7 @@ export default function JoinGame() {
   const [mounted, setMounted] = useState(false);
   const [roleRevealed, setRoleRevealed] = useState(false);
 
-  const { phase, connectSocket, gameCode, joinGame, activeGames, getActiveGames, faction } = useGameStore();
+  const { phase, connectSocket, gameCode, joinGame, activeGames, getActiveGames, faction, testMode } = useGameStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -278,6 +279,32 @@ export default function JoinGame() {
   if (flowStep === 'role-reveal' && faction) {
     const factionData = require('@/lib/factions').FACTIONS[faction];
     
+    // Lorem Ipsum replacements for test mode
+    const loremTellingTales = [
+      'Lorem ipsum dolor sit amet',
+      'Consectetur adipiscing elit',
+      'Sed do eiusmod tempor'
+    ];
+    const loremForbiddenWords = [
+      'Lorem', 'Ipsum', 'Dolor', 'Amet', 'Consectetur'
+    ];
+    const loremPhrases = [
+      'Lorem ipsum dolor...',
+      'Sit amet consectetur',
+      'Adipiscing elit sed'
+    ];
+
+    // Use Lorem Ipsum if test mode is active, otherwise use real data
+    const displayData = testMode ? {
+      tellingTales: loremTellingTales,
+      forbiddenWords: loremForbiddenWords,
+      favoritePhrases: loremPhrases
+    } : {
+      tellingTales: factionData.tellingTales.slice(0, 3),
+      forbiddenWords: factionData.forbiddenWords.slice(0, 5),
+      favoritePhrases: factionData.favoritePhrases.slice(0, 3)
+    };
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-950 to-black flex items-center justify-center p-4">
         <div className="max-w-3xl w-full">
@@ -322,7 +349,7 @@ export default function JoinGame() {
                   Dessa beteenden kan avslöja dig:
                 </p>
                 <ul className="text-sm text-white space-y-2">
-                  {factionData.tellingTales.slice(0, 3).map((tale: string, i: number) => (
+                  {displayData.tellingTales.map((tale: string, i: number) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="text-purple-400">•</span>
                       <span>{tale}</span>
@@ -340,7 +367,7 @@ export default function JoinGame() {
                   Säg INTE dessa ord:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {factionData.forbiddenWords.slice(0, 5).map((word: string, i: number) => (
+                  {displayData.forbiddenWords.map((word: string, i: number) => (
                     <span key={i} className="bg-red-500/20 text-red-200 px-3 py-1 rounded-full text-sm border border-red-400/30">
                       {word}
                     </span>
@@ -357,7 +384,7 @@ export default function JoinGame() {
                   Använd dessa frases för poäng:
                 </p>
                 <ul className="text-sm text-white space-y-2">
-                  {factionData.favoritePhrases.slice(0, 3).map((phrase: string, i: number) => (
+                  {displayData.favoritePhrases.map((phrase: string, i: number) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="text-green-400">✓</span>
                       <span className="italic">"{phrase}"</span>
@@ -393,6 +420,7 @@ export default function JoinGame() {
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-black">
       <ConnectionStatus />
       <DisconnectionWarning />
+      <TestModeToggle />
       
       {flowStep === 'lobby' && <Lobby />}
       {flowStep === 'role-reveal' && faction && (

@@ -25,6 +25,16 @@ export default function ResultsPhase() {
   const [countdown, setCountdown] = useState(10);
   const [showResults, setShowResults] = useState(false);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('ResultsPhase rendered with:', {
+      scores,
+      revealedPlayers,
+      scoresLength: scores.length,
+      revealedPlayersLength: revealedPlayers.length
+    });
+  }, [scores, revealedPlayers]);
+
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -147,7 +157,13 @@ export default function ResultsPhase() {
         {/* Scoreboard */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 mb-8">
           <h2 className="text-3xl font-bold text-white mb-6">🏅 Poängtavla</h2>
-          <div className="space-y-4">
+          {scores.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-xl text-purple-200">Ingen poängdata tillgänglig än...</p>
+              <p className="text-sm text-purple-300 mt-2">Scores: {JSON.stringify(scores)}</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
             {scores.map((score, index) => {
               const player = getPlayerFaction(score.playerId);
               const factionData = player?.faction ? getFactionByName(player.faction) : null;
@@ -227,12 +243,19 @@ export default function ResultsPhase() {
               );
             })}
           </div>
+          )}
         </div>
 
         {/* Faction Scores */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 mb-8">
           <h2 className="text-3xl font-bold text-white mb-6">Fraktionspoäng</h2>
-          <div className="space-y-3">
+          {factionScores.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-xl text-purple-200">Ingen fraktionsdata tillgänglig än...</p>
+              <p className="text-sm text-purple-300 mt-2">RevealedPlayers: {JSON.stringify(revealedPlayers)}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
             {factionScores.map((factionScore, index) => {
               const factionData = getFactionByName(factionScore.faction as any);
               
@@ -264,6 +287,7 @@ export default function ResultsPhase() {
               );
             })}
           </div>
+          )}
         </div>
 
         {/* All Players by Faction */}
