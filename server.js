@@ -134,6 +134,11 @@ app.prepare().then(() => {
         
         callback({ success: true, playerId });
         
+        // Broadcast lobby update to all players (including visualizations)
+        io.to(code).emit('lobby-update', {
+          players: Array.from(game.players.values())
+        });
+        
         // Send them their current game state
         if (player.faction) {
           socket.emit('role-assigned', { faction: player.faction });

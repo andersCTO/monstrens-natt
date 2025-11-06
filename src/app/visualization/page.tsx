@@ -38,12 +38,21 @@ interface ActiveGame {
 }
 
 const FACTION_CONFIG: Record<Faction, { color: string; imagePath: string }> = {
-  'Vampyr': { color: '#8B0000', imagePath: '/factions/vampyr.png' },
-  'Varulv': { color: '#654321', imagePath: '/factions/varulv.png' },
-  'Häxa': { color: '#9400D3', imagePath: '/factions/haxa.png' },
-  'Monsterjägare': { color: '#DAA520', imagePath: '/factions/monsterjaegare.png' },
-  'De Fördömda': { color: '#2F4F4F', imagePath: '/factions/de-fordomda.png' }
+  'Vampyr': { color: '#8B0000', imagePath: '/factions/visualization/vampyr.png' },
+  'Varulv': { color: '#654321', imagePath: '/factions/visualization/varulv.png' },
+  'Häxa': { color: '#9400D3', imagePath: '/factions/visualization/haxa.png' },
+  'Monsterjägare': { color: '#DAA520', imagePath: '/factions/visualization/monsterjagare.png' },
+  'De Fördömda': { color: '#2F4F4F', imagePath: '/factions/visualization/de-fordomda.png' }
 };
+
+// Available backgrounds
+const BACKGROUNDS = [
+  { name: 'Övergivet Kyrkogård', path: '/backgrounds/Abondoned Graveyard.png' },
+  { name: 'Förbannande Skog', path: '/backgrounds/cursed-forest-edge.png' },
+  { name: 'Hemsökt Bytorg', path: '/backgrounds/haunted-village-square.png' },
+  { name: 'Stockholm', path: '/backgrounds/Stockholm.png' },
+  { name: 'Västerås', path: '/backgrounds/Vasteras.png' }
+];
 
 // Define which factions each faction avoids
 const FACTION_AVOIDANCE: Record<Faction, Faction[]> = {
@@ -81,6 +90,7 @@ export default function VisualizationPage() {
   const [scores, setScores] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
   const resultsPhaseRef = useRef<'grouping' | 'podium' | 'done'>('grouping');
+  const [selectedBackground, setSelectedBackground] = useState(0); // Index in BACKGROUNDS array
 
   // Crossfade music loop
   useEffect(() => {
@@ -224,12 +234,18 @@ export default function VisualizationPage() {
     if (!socket) return;
 
     socket.on('lobby-update', (data: { players: any[] }) => {
-      // If we don't have creatures yet, initialize them
-      if (creaturesRef.current.length === 0) {
-        console.log('Received lobby-update with no creatures, initializing...');
+      console.log('=== LOBBY-UPDATE EVENT ===');
+      console.log('isInitialized:', isInitialized.current);
+      console.log('creaturesRef.length:', creaturesRef.current.length);
+      console.log('players:', data.players.length);
+      
+      // Only initialize if we haven't initialized yet
+      if (!isInitialized.current) {
+        console.log('→ Calling initializeCreatures');
         initializeCreatures(data.players);
       } else {
         // Otherwise just update existing creatures
+        console.log('→ Calling updateCreatures');
         updateCreatures(data.players);
       }
     });
@@ -253,16 +269,20 @@ export default function VisualizationPage() {
   }, [socket]);
 
   const initializeCreatures = (players: any[]) => {
+    console.log('=== initializeCreatures CALLED ===');
     console.log('initializeCreatures called with', players.length, 'players');
     console.log('Current creatures:', creaturesRef.current.length);
     console.log('isInitialized ref:', isInitialized.current);
+    console.log('Stack trace:', new Error().stack);
     
-    // Only block if we actually have creatures AND the flag is set
-    // This handles both: new sessions and page refreshes
-    if (creaturesRef.current.length > 0 || isInitialized.current) {
-      console.log('Creatures already exist or initialized, skipping...');
+    // Check if already initialized - this is the primary guard
+    if (isInitialized.current) {
+      console.log('Already initialized, skipping...');
       return;
     }
+    
+    // Set flag immediately to prevent race conditions
+    isInitialized.current = true;
     
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -271,16 +291,23 @@ export default function VisualizationPage() {
     }
     
     console.log('Initializing creatures for the first time');
+    console.log('Players data:', JSON.stringify(players, null, 2));
 
-    const newCreatures: Creature[] = players
-      .filter(p => !p.isHost && p.faction)
+    const filteredPlayers = players.filter(p => !p.isHost && p.faction);
+    console.log('Filtered players (non-hosts with faction):', filteredPlayers.length);
+    console.log('Filtered players data:', JSON.stringify(filteredPlayers, null, 2));
+
+    const newCreatures: Creature[] = filteredPlayers
       .map(p => {
+        console.log('Mapping player:', p.name, 'faction:', p.faction);
         const config = FACTION_CONFIG[p.faction as Faction];
-        const spawnDelay = Math.random() * 5000 + 5000; // 5-10 seconds for testing
+        console.log('Config for faction:', config);
+        const spawnDelay = 0; // Immediate spawn for refresh/reconnect
         
         // Load image
         const img = new Image();
         img.src = config.imagePath;
+        console.log('Image src:', config.imagePath);
         
         // Spawn position avoiding control panel (top-left area)
         let spawnX, spawnY;
@@ -309,13 +336,16 @@ export default function VisualizationPage() {
           color: config.color,
           image: img,
           spawnTime: Date.now() + spawnDelay,
-          visible: false,
+          visible: true, // Immediately visible
           rotation: (Math.random() - 0.5) * (Math.PI / 6), // ±15 degrees
           rotationSpeed: (Math.random() - 0.5) * 0.02, // Slower rotation
-          scale: 0,
+          scale: 1, // Full size immediately
           isVillager: false
         };
       });
+
+    console.log('newCreatures array created, length:', newCreatures.length);
+    console.log('newCreatures:', newCreatures);
 
     // Add villagers (max 20, 2 per creature)
     const villagers: Creature[] = [];
@@ -326,7 +356,7 @@ export default function VisualizationPage() {
       img.src = `/villagers/${gender}.png`;
       const spawnX = Math.random() * canvas.width;
       const spawnY = Math.random() * canvas.height;
-      const spawnDelay = Math.random() * 5000 + 5000;
+      const spawnDelay = 0; // Immediate spawn
       
       villagers.push({
         id: `villager-${gender}-${i}`,
@@ -339,49 +369,114 @@ export default function VisualizationPage() {
         color: '#888888',
         image: img,
         spawnTime: Date.now() + spawnDelay,
-        visible: false,
+        visible: true, // Immediately visible
         rotation: (Math.random() - 0.5) * (Math.PI / 8), // ±11.25 degrees - even less for villagers
         rotationSpeed: (Math.random() - 0.5) * 0.01, // Very slow rotation for villagers
-        scale: 0,
+        scale: 1, // Full size immediately
         isVillager: true,
         villagerGender: gender
       });
     }
 
+    console.log('About to setCreatures with:', newCreatures.length, 'monsters +', villagers.length, 'villagers');
+    console.log('Total creatures to set:', [...newCreatures, ...villagers].length);
     setCreatures([...newCreatures, ...villagers]);
     
-    isInitialized.current = true;
     console.log('Creatures initialized:', newCreatures.length, 'monsters +', villagers.length, 'villagers');
   };
 
   const updateCreatures = (players: any[]) => {
-    setCreatures(prev => {
-      const updatedCreatures = [...prev];
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    console.log('updateCreatures called with', players.length, 'players');
+    console.log('Current creaturesRef:', creaturesRef.current.length);
+    
+    // Use creaturesRef.current instead of prev state to avoid race conditions
+    const updatedCreatures = [...creaturesRef.current];
+    
+    // Mark creatures for removal if they're not in the current players list (but not villagers)
+    // NOTE: We don't mark creatures for removal on temporary disconnects - only when player truly leaves
+    updatedCreatures.forEach(c => {
+      if (c.isVillager) return; // Never remove villagers
       
-      // Mark creatures for removal if they're not in the current players list OR disconnected (but not villagers)
-      updatedCreatures.forEach(c => {
-        if (c.isVillager) return; // Never remove villagers
-        
-        const player = players.find(p => p.name === c.name);
-        if (!player || player.disconnected) {
-          if (!c.markedForRemoval) {
-            c.markedForRemoval = true;
-            c.removalTime = Date.now() + Math.random() * 5000 + 5000;
-          }
-        } else {
-          // Player exists and is not disconnected - ensure removal flag is cleared (handles reconnect)
-          if (c.markedForRemoval) {
-            c.markedForRemoval = false;
-            c.removalTime = undefined;
-          }
+      const player = players.find(p => p.name === c.name);
+      
+      // Only mark for removal if player is NOT in the list at all (not just disconnected)
+      // This prevents creatures from disappearing during quick reconnects (like page refresh)
+      if (!player) {
+        if (!c.markedForRemoval) {
+          console.log('Marking for removal (player left):', c.name);
+          c.markedForRemoval = true;
+          c.removalTime = Date.now() + Math.random() * 5000 + 5000;
         }
-      });
-
-      // Remove creatures that have passed their removal time (but keep villagers)
-      return updatedCreatures.filter(c => 
-        c.isVillager || (!c.markedForRemoval || (c.removalTime && Date.now() < c.removalTime))
-      );
+      } else {
+        // Player exists in list - ensure removal flag is cleared
+        if (c.markedForRemoval) {
+          console.log('Clearing removal flag for:', c.name);
+          c.markedForRemoval = false;
+          c.removalTime = undefined;
+        }
+      }
     });
+
+    // Add new players that joined after game started
+    const newPlayers = players.filter(p => 
+      !p.isHost && 
+      p.faction && 
+      !updatedCreatures.some(c => c.name === p.name && !c.isVillager)
+    );
+
+    console.log('New players to add:', newPlayers.length);
+    if (newPlayers.length > 0) {
+      console.log('New players:', newPlayers.map(p => p.name));
+    }
+    
+    newPlayers.forEach(p => {
+      const config = FACTION_CONFIG[p.faction as Faction];
+      const img = new Image();
+      img.src = config.imagePath;
+
+      // Spawn position avoiding control panel
+      let spawnX, spawnY;
+      const panelRight = 450;
+      const panelBottom = 600;
+      
+      if (Math.random() > 0.5) {
+        spawnX = panelRight + 50 + Math.random() * (canvas.width - panelRight - 100);
+        spawnY = Math.random() * canvas.height;
+      } else {
+        spawnX = Math.random() * canvas.width;
+        spawnY = panelBottom + 50 + Math.random() * (canvas.height - panelBottom - 100);
+      }
+
+      updatedCreatures.push({
+        id: p.name,
+        name: p.name,
+        faction: p.faction,
+        x: spawnX,
+        y: spawnY,
+        vx: (Math.random() - 0.5) * 3,
+        vy: (Math.random() - 0.5) * 3,
+        color: config.color,
+        image: img,
+        spawnTime: Date.now() + Math.random() * 2000, // Spawn soon
+        visible: false,
+        rotation: (Math.random() - 0.5) * (Math.PI / 4),
+        rotationSpeed: (Math.random() - 0.5) * 0.02,
+        scale: 0,
+        isVillager: false
+      });
+    });
+
+    // Remove creatures that have passed their removal time (but keep villagers)
+    const filtered = updatedCreatures.filter(c => 
+      c.isVillager || (!c.markedForRemoval || (c.removalTime && Date.now() < c.removalTime))
+    );
+    
+    console.log('Returning creatures:', filtered.length, '(villagers:', filtered.filter(c => c.isVillager).length, ', monsters:', filtered.filter(c => !c.isVillager).length, ')');
+    
+    setCreatures(filtered);
   };
 
   // Animation loop
@@ -546,8 +641,24 @@ export default function VisualizationPage() {
           const factionsToHunt = FACTION_HUNTING[creature.faction];
           
           creaturesRef.current.forEach(other => {
-            // Skip self, invisible creatures, and villagers (monsters don't interact with villagers)
-            if (other.id === creature.id || !other.visible || other.isVillager) return;
+            // Skip self and invisible creatures
+            if (other.id === creature.id || !other.visible) return;
+            
+            // De Fördömda should avoid villagers, other monsters ignore them
+            if (other.isVillager) {
+              if (creature.faction === 'De Fördömda') {
+                const dx = other.x - x;
+                const dy = other.y - y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < avoidanceRadius && distance > 0) {
+                  const strength = (avoidanceRadius - distance) / avoidanceRadius;
+                  avoidanceForce.x -= (dx / distance) * strength * 0.8;
+                  avoidanceForce.y -= (dy / distance) * strength * 0.8;
+                }
+              }
+              return; // Other factions ignore villagers
+            }
             
             const dx = other.x - x; // Direction TO other creature
             const dy = other.y - y;
@@ -613,7 +724,7 @@ export default function VisualizationPage() {
           y += vy;
 
           // Creature-to-creature collision detection
-          const creatureRadius = 30; // Half of 60px character size
+          const creatureRadius = 36; // Half of 72px character size
           creaturesRef.current.forEach(other => {
             if (other.id === creature.id || !other.visible) return;
             
@@ -677,7 +788,7 @@ export default function VisualizationPage() {
         if (creature.image && creature.image.complete) {
           ctx.save();
           ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-          ctx.translate(x, y + 36); // Position shadow below creature (adjusted for larger size)
+          ctx.translate(x, y + 20); // Position shadow below creature
           ctx.scale(1, 0.4); // Compress vertically for isometric perspective
           ctx.beginPath();
           ctx.arc(0, 0, 24 * scale, 0, Math.PI * 2); // 20% larger shadow (20 * 1.2 = 24)
@@ -687,7 +798,7 @@ export default function VisualizationPage() {
 
         // Draw image if loaded (fully opaque, with rotation and scale)
         if (creature.image && creature.image.complete) {
-          const size = 60 * scale; // Image size with scale (50 * 1.2 = 60, 20% larger)
+          const size = 72 * scale; // Image size with scale (60 * 1.2 = 72, 20% larger)
           
           ctx.save(); // Save current context state
           ctx.translate(x, y); // Move to creature position
@@ -852,7 +963,7 @@ export default function VisualizationPage() {
     <div 
       className="relative w-screen h-screen overflow-hidden bg-gray-900"
       style={{
-        backgroundImage: 'url(/background.png)',
+        backgroundImage: `url(${BACKGROUNDS[selectedBackground].path})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -887,6 +998,22 @@ export default function VisualizationPage() {
           >
             {isMusicPlaying ? '🔊' : '🔇'}
           </button>
+        </div>
+
+        {/* Background selector */}
+        <div className="mb-4">
+          <label className="block text-sm mb-1">Bakgrund:</label>
+          <select
+            value={selectedBackground}
+            onChange={(e) => setSelectedBackground(Number(e.target.value))}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm"
+          >
+            {BACKGROUNDS.map((bg, index) => (
+              <option key={index} value={index}>
+                {bg.name}
+              </option>
+            ))}
+          </select>
         </div>
         
         {!creatures.length ? (
